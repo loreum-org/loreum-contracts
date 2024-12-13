@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 abstract contract Board {
 
-    string public constant version = "1";
+    event SetSeats(uint256 numOfSeats);
+    event SetSeatsCall(address caller);
 
     struct Node {
         uint256 tokenId;
@@ -12,8 +13,13 @@ abstract contract Board {
         uint256 prev;
     }
 
+    uint256 private seats;
+
     // Mapping from tokenId to Node
     mapping(uint256 => Node) internal nodes;
+
+    // used to update the number of seats
+    address[] private updateSeatList;
 
     // Head and tail of the list (0 represents null)
     uint256 public head;
@@ -104,5 +110,49 @@ abstract contract Board {
         }
 
         return (tokenIds, amounts);
+    }
+
+    function _getQuorum() internal view returns (uint256) {
+        return 1 + (seats * 51) / 100;
+    }
+
+    function _getSeats() internal view returns(uint256) {
+        return seats;
+    }
+
+    function _setSeats(uint256 numOfSeats) internal {
+        
+        if (seats == 0) {
+            seats = numOfSeats;
+            emit SetSeats(numOfSeats);
+            return;
+        }
+
+        uint256 _quorum = _getQuorum();
+
+        if (updateSeatList.length == 0) {
+            updateSeatList.push(msg.sender);
+            emit SetSeatsCall(msg.sender);
+            return;
+        }
+
+        for (uint256 i = 0; i < updateSeatList.length; i++) {
+            if (updateSeatList[i] == msg.sender) {
+                revert("Already sent update request");
+            }
+        }
+
+        updateSeatList.push(msg.sender);
+        emit SetSeatsCall(msg.sender);
+
+        if (updateSeatList.length >= _quorum) {
+            seats = numOfSeats;
+            emit SetSeats(numOfSeats);
+            delete updateSeatList;
+        }
+    }
+
+    function _getSeatUpdateList() internal view returns (address[] memory) {
+        return updateSeatList;
     }
 }

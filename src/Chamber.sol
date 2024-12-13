@@ -12,19 +12,18 @@ contract Chamber is Board, Wallet {
     IERC20 public token;
     IERC721 public nft;
 
-    uint256 public seats;
-
     // Mapping to track delegated amounts per user per tokenId
     mapping(address => mapping(uint256 => uint256)) private _userDelegations;
 
     event Received(address indexed sender, uint256 amount);
     event Delegate(address indexed sender, uint256 tokenId, uint256 amount);
     event Undelegate(address indexed sender, uint256 tokenId, uint256 amount);
+    event UpdateSeats(bytes[] signedData, uint256 numOfSeats);
 
-    constructor(address _token, address _nft, uint256 _seats) {
-        token = IERC20(_token);
-        nft = IERC721(_nft);
-        seats = _seats;
+    constructor(address erc20Token, address erc721Token, uint256 seats) {
+        token = IERC20(erc20Token);
+        nft = IERC721(erc721Token);
+        _setSeats(seats);
     }
 
     function delegate(uint256 tokenId, uint256 amount) external {
@@ -80,6 +79,8 @@ contract Chamber is Board, Wallet {
         emit Undelegate(msg.sender, tokenId, amount);
     }
 
+    /// BOARD ///
+
     function getMember(uint256 tokenId) public view returns (Node memory) {
         return _getNode(tokenId);
     }
@@ -97,41 +98,73 @@ contract Chamber is Board, Wallet {
         return _userDelegations[user][tokenId];
     }
 
-    /// WALLET ///
-    modifier isDirector() {
-        uint256[] memory topTokenIds;
-        (topTokenIds, ) = getTop(5);
-        bool isTop5 = false;
+    function getQuorum() public view returns (uint256) {
+        return _getQuorum();
+    }
+
+    function getSeats() public view returns (uint256) {
+        return _getSeats();
+    }
+
+    function getDirectors() public view returns (address[] memory) {
+        (uint256[] memory topTokenIds, ) = getTop(_getSeats());
+        address[] memory topOwners = new address[](topTokenIds.length);
+
+        for (uint256 i = 0; i < topTokenIds.length; i++) {
+            topOwners[i] = nft.ownerOf(topTokenIds[i]);
+        }
+
+        return topOwners;
+    }
+
+    function getSeatUpdateList() public view onlyDirector returns (address[] memory) {
+        return _getSeatUpdateList();
+    }
+
+    function updateNumSeats(uint256 numOfSeats) public onlyDirector {
+        _setSeats(numOfSeats);
+    }
+
+    modifier onlyDirector() {
+        (uint256[] memory topTokenIds, ) = getTop(_getSeats());
 
         for (uint256 i = 0; i < topTokenIds.length; i++) {
             if (nft.ownerOf(topTokenIds[i]) == msg.sender) {
-                isTop5 = true;
-                break;
+                _;
+                return;
             }
         }
 
-        require(isTop5, "Caller is not a director");
-        _;
+        revert("Caller is not a director");
     }
+
+    /// WALLET ///
 
     function submitTransaction(
         address to,
         uint256 value,
         bytes memory data
-    ) public isDirector {
+    ) public onlyDirector {
         _submitTransaction(to, value, data);
     }
 
-    function confirmTransaction(uint256 transactionId) public isDirector {
+    function confirmTransaction(uint256 transactionId) public onlyDirector {
         _confirmTransaction(transactionId);
     }
 
-    function executeTransaction(uint256 transactionId) public isDirector {
-        require(getTransaction(transactionId).numConfirmations >= 3, "Cannot execute transaction: not enough confirmations");
+    function executeTransaction(uint256 transactionId) public onlyDirector {
+        require(
+            getTransaction(transactionId).numConfirmations >= getQuorum(),
+            "Cannot execute transaction: not enough confirmations"
+        );
         _executeTransaction(transactionId);
     }
 
-    function revokeConfirmation(uint256 transactionId) public isDirector {
+    function revokeConfirmation(uint256 transactionId) public onlyDirector {
         _revokeConfirmation(transactionId);
+    }
+
+    receive() external payable {
+        emit Received(msg.sender, msg.value);
     }
 }

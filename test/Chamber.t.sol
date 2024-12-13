@@ -254,5 +254,62 @@ contract ChamberTest is Test {
 
         assertEq(count, 1);
     }
+
+    function test_Chamber_GetQuorum() public view {
+        uint256 expectedQuorum = 1 + (seats * 51) / 100;
+        uint256 actualQuorum = chamber.getQuorum();
+
+        assertEq(expectedQuorum, actualQuorum);
+    }
+
+    function test_Chamber_UpdateSeats() public {
+        uint256 amount = 100;
+        uint256 tokenId1 = 1;
+        uint256 tokenId2 = 2;
+        uint256 tokenId3 = 3;
+
+        // Mint NFTs to users
+        MockERC721(address(nft)).mint(user1, tokenId1);
+        MockERC721(address(nft)).mint(user2, tokenId2);
+        MockERC721(address(nft)).mint(user3, tokenId3);
+
+        // Mint tokens to users
+        MockERC20(address(token)).mint(user1, amount);
+        MockERC20(address(token)).mint(user2, amount);
+        MockERC20(address(token)).mint(user3, amount);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId1, amount);
+        vm.stopPrank();
+
+        vm.startPrank(user2);     
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId2, amount);
+        vm.stopPrank();
+
+        vm.startPrank(user3);    
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId3, amount);
+        vm.stopPrank();
+
+        // Attempt to update seats by a non-leader
+        address to = address(chamber);
+        uint256 value = 0;
+        bytes memory data = abi.encodeWithSignature("_setSeats(uint256)", 5);
+
+        vm.prank(user1);
+        chamber.submitTransaction(to, value, data);
+
+        vm.prank(user1);
+        chamber.updateNumSeats(6);
+
+        vm.prank(user2);
+        chamber.updateNumSeats(6);
+
+        vm.prank(user3);
+        chamber.updateNumSeats(6);
+    }
 }
 
