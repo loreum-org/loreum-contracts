@@ -306,3 +306,4 @@ contract ChamberTest is Test {
         chamber.updateNumSeats(6);
     }
 }
+
