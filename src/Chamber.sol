@@ -35,6 +35,7 @@ contract Chamber is Board, Wallet {
     /// @param tokenId The tokenId from which tokens are undelegated
     /// @param amount The amount of tokens undelegated
     event Undelegate(address indexed sender, uint256 tokenId, uint256 amount);
+    event UpdateSeats(bytes[] signedData, uint256 numOfSeats);
 
     /// @notice Emitted when the number of seats is updated
     /// @param signedData The signed data for the update
