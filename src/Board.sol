@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 abstract contract Board {
-
     event SetSeats(uint256 numOfSeats);
     event SetSeatsCall(address caller);
 
@@ -95,9 +94,7 @@ abstract contract Board {
     }
 
     // View functions for the leaderboard
-    function _getTop(
-        uint256 count
-    ) internal view returns (uint256[] memory, uint256[] memory) {
+    function _getTop(uint256 count) internal view returns (uint256[] memory, uint256[] memory) {
         uint256 resultCount = count > size ? size : count;
         uint256[] memory tokenIds = new uint256[](resultCount);
         uint256[] memory amounts = new uint256[](resultCount);
@@ -116,12 +113,11 @@ abstract contract Board {
         return 1 + (seats * 51) / 100;
     }
 
-    function _getSeats() internal view returns(uint256) {
+    function _getSeats() internal view returns (uint256) {
         return seats;
     }
 
     function _setSeats(uint256 numOfSeats) internal {
-        
         if (seats == 0) {
             seats = numOfSeats;
             emit SetSeats(numOfSeats);

@@ -4,11 +4,7 @@ pragma solidity ^0.8.24;
 import {Wallet} from "src/Wallet.sol";
 
 contract MockWallet is Wallet {
-    function submitTransaction(
-        address to,
-        uint256 value,
-        bytes memory data
-    ) public {
+    function submitTransaction(address to, uint256 value, bytes memory data) public {
         _submitTransaction(to, value, data);
     }
 

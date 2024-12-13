@@ -43,10 +43,7 @@ contract Chamber is Board, Wallet {
         }
 
         // Transfer tokens from user
-        require(
-            token.transferFrom(msg.sender, address(this), amount),
-            "Transfer failed"
-        );
+        require(token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
 
         // Emit Delegate event
         emit Delegate(msg.sender, tokenId, amount);
@@ -54,10 +51,7 @@ contract Chamber is Board, Wallet {
 
     function undelegate(uint256 tokenId, uint256 amount) external {
         require(amount > 0, "Amount must be greater than 0");
-        require(
-            _userDelegations[msg.sender][tokenId] >= amount,
-            "Insufficient delegated amount"
-        );
+        require(_userDelegations[msg.sender][tokenId] >= amount, "Insufficient delegated amount");
 
         // Update user delegation amount
         _userDelegations[msg.sender][tokenId] -= amount;
@@ -85,16 +79,11 @@ contract Chamber is Board, Wallet {
         return _getNode(tokenId);
     }
 
-    function getTop(
-        uint256 count
-    ) public view returns (uint256[] memory, uint256[] memory) {
+    function getTop(uint256 count) public view returns (uint256[] memory, uint256[] memory) {
         return _getTop(count);
     }
 
-    function getDelegation(
-        address user,
-        uint256 tokenId
-    ) public view returns (uint256) {
+    function getDelegation(address user, uint256 tokenId) public view returns (uint256) {
         return _userDelegations[user][tokenId];
     }
 
@@ -107,7 +96,7 @@ contract Chamber is Board, Wallet {
     }
 
     function getDirectors() public view returns (address[] memory) {
-        (uint256[] memory topTokenIds, ) = getTop(_getSeats());
+        (uint256[] memory topTokenIds,) = getTop(_getSeats());
         address[] memory topOwners = new address[](topTokenIds.length);
 
         for (uint256 i = 0; i < topTokenIds.length; i++) {
@@ -126,7 +115,7 @@ contract Chamber is Board, Wallet {
     }
 
     modifier onlyDirector() {
-        (uint256[] memory topTokenIds, ) = getTop(_getSeats());
+        (uint256[] memory topTokenIds,) = getTop(_getSeats());
 
         for (uint256 i = 0; i < topTokenIds.length; i++) {
             if (nft.ownerOf(topTokenIds[i]) == msg.sender) {
@@ -140,11 +129,7 @@ contract Chamber is Board, Wallet {
 
     /// WALLET ///
 
-    function submitTransaction(
-        address to,
-        uint256 value,
-        bytes memory data
-    ) public onlyDirector {
+    function submitTransaction(address to, uint256 value, bytes memory data) public onlyDirector {
         _submitTransaction(to, value, data);
     }
 

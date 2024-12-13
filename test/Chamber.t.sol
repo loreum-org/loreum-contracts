@@ -75,7 +75,6 @@ contract ChamberTest is Test {
     }
 
     function test_Chamber_getLeaderboard_success() public {
-
         uint256 num = 5000;
         uint256[] memory tokenIds = new uint256[](num);
         uint256[] memory amounts = new uint256[](num);
@@ -122,7 +121,6 @@ contract ChamberTest is Test {
         MockERC721(address(nft)).mint(user1, tokenId);
         MockERC20(address(token)).mint(user1, amount);
 
-
         vm.startPrank(user1);
         MockERC20(address(token)).approve(address(chamber), amount);
         chamber.delegate(tokenId, 1);
@@ -149,7 +147,6 @@ contract ChamberTest is Test {
         MockERC721(address(nft)).mint(user1, tokenId);
         MockERC20(address(token)).mint(user1, amount);
 
-
         vm.startPrank(user1);
         MockERC20(address(token)).approve(address(chamber), amount);
         chamber.delegate(tokenId, 1);
@@ -170,7 +167,6 @@ contract ChamberTest is Test {
         uint256 amount = 1 ether;
         MockERC721(address(nft)).mint(user1, tokenId);
         MockERC20(address(token)).mint(user1, amount);
-
 
         vm.startPrank(user1);
         MockERC20(address(token)).approve(address(chamber), amount);
@@ -202,7 +198,6 @@ contract ChamberTest is Test {
 
         MockERC721(address(nft)).mint(user3, tokenId + 3);
         MockERC20(address(token)).mint(user3, amount);
-
 
         vm.startPrank(user1);
         MockERC20(address(token)).approve(address(chamber), amount);
@@ -241,7 +236,6 @@ contract ChamberTest is Test {
         uint256 amount = 1 ether;
         MockERC721(address(nft)).mint(user1, tokenId);
         MockERC20(address(token)).mint(user1, amount);
-
 
         vm.startPrank(user1);
         MockERC20(address(token)).approve(address(chamber), amount);
@@ -284,12 +278,12 @@ contract ChamberTest is Test {
         chamber.delegate(tokenId1, amount);
         vm.stopPrank();
 
-        vm.startPrank(user2);     
+        vm.startPrank(user2);
         MockERC20(address(token)).approve(address(chamber), amount);
         chamber.delegate(tokenId2, amount);
         vm.stopPrank();
 
-        vm.startPrank(user3);    
+        vm.startPrank(user3);
         MockERC20(address(token)).approve(address(chamber), amount);
         chamber.delegate(tokenId3, amount);
         vm.stopPrank();
@@ -312,4 +306,3 @@ contract ChamberTest is Test {
         chamber.updateNumSeats(6);
     }
 }
-

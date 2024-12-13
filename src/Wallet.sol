@@ -2,8 +2,9 @@
 pragma solidity ^0.8.24;
 
 abstract contract Wallet {
-
-    event SubmitTransaction(address indexed leader, uint256 indexed txIndex, address indexed to, uint256 value, bytes data);
+    event SubmitTransaction(
+        address indexed leader, uint256 indexed txIndex, address indexed to, uint256 value, bytes data
+    );
     event ConfirmTransaction(address indexed leader, uint256 indexed txIndex);
     event RevokeConfirmation(address indexed leader, uint256 indexed txIndex);
     event ExecuteTransaction(address indexed leader, uint256 indexed txIndex);
@@ -37,20 +38,17 @@ abstract contract Wallet {
     function _submitTransaction(address _to, uint256 _value, bytes memory _data) internal {
         uint256 txIndex = transactions.length;
 
-        transactions.push(
-            Transaction({
-                to: _to,
-                value: _value,
-                data: _data,
-                executed: false,
-                numConfirmations: 0
-            })
-        );
+        transactions.push(Transaction({to: _to, value: _value, data: _data, executed: false, numConfirmations: 0}));
 
         emit SubmitTransaction(msg.sender, txIndex, _to, _value, _data);
     }
 
-    function _confirmTransaction(uint256 _txIndex) internal txExists(_txIndex) notExecuted(_txIndex) notConfirmed(_txIndex) {
+    function _confirmTransaction(uint256 _txIndex)
+        internal
+        txExists(_txIndex)
+        notExecuted(_txIndex)
+        notConfirmed(_txIndex)
+    {
         Transaction storage transaction = transactions[_txIndex];
         transaction.numConfirmations += 1;
         isConfirmed[_txIndex][msg.sender] = true;
@@ -73,7 +71,7 @@ abstract contract Wallet {
 
         transaction.executed = true;
 
-        (bool success, ) = transaction.to.call{value: transaction.value}(transaction.data);
+        (bool success,) = transaction.to.call{value: transaction.value}(transaction.data);
         require(success, "Tx failed");
 
         emit ExecuteTransaction(msg.sender, _txIndex);
@@ -83,11 +81,7 @@ abstract contract Wallet {
         return transactions.length;
     }
 
-    function getTransaction(uint256 _txIndex)
-        public
-        view
-        returns (Transaction memory)
-    {
+    function getTransaction(uint256 _txIndex) public view returns (Transaction memory) {
         Transaction storage transaction = transactions[_txIndex];
 
         return Transaction({
@@ -99,5 +93,3 @@ abstract contract Wallet {
         });
     }
 }
-
-

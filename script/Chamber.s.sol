@@ -5,7 +5,6 @@ import {Script} from "lib/forge-std/src/Script.sol";
 import {Chamber} from "src/Chamber.sol";
 
 contract DeployChamber is Script {
-    
     address token = address(1);
     address nft = address(2);
 
