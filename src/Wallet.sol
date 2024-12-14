@@ -84,10 +84,10 @@ abstract contract Wallet {
     }
 
     /// @notice Returns the details of a specific transaction
-    /// @param _txIndex The index of the transaction to retrieve
+    /// @param txIndex The index of the transaction to retrieve
     /// @return The Transaction struct containing the transaction details
-    function getTransaction(uint256 _txIndex) public view returns (Transaction memory) {
-        Transaction storage transaction = transactions[_txIndex];
+    function getTransaction(uint256 txIndex) public view returns (Transaction memory) {
+        Transaction storage transaction = transactions[txIndex];
 
         return Transaction({
             to: transaction.to,
