@@ -35,6 +35,10 @@ contract Chamber is Board, Wallet {
     /// @param tokenId The tokenId from which tokens are undelegated
     /// @param amount The amount of tokens undelegated
     event Undelegate(address indexed sender, uint256 tokenId, uint256 amount);
+
+    /// @notice Emitted when the number of seats is updated
+    /// @param signedData The signed data for the update
+    /// @param numOfSeats The new number of seats
     event UpdateSeats(bytes[] signedData, uint256 numOfSeats);
 
     /// @notice Emitted when the number of seats is updated
@@ -114,23 +118,18 @@ contract Chamber is Board, Wallet {
         return _getNode(tokenId);
     }
 
-<<<<<<< HEAD
+
     /// @notice Retrieves the top tokenIds and their amounts
     /// @param count The number of top tokenIds to retrieve
     /// @return An array of top tokenIds and their corresponding amounts
-=======
->>>>>>> d8a803a (Forge fmt)
     function getTop(uint256 count) public view returns (uint256[] memory, uint256[] memory) {
         return _getTop(count);
     }
 
-<<<<<<< HEAD
     /// @notice Retrieves the delegation amount for a user and tokenId
     /// @param user The address of the user
     /// @param tokenId The tokenId to check
     /// @return The amount of tokens delegated by the user to the tokenId
-=======
->>>>>>> d8a803a (Forge fmt)
     function getDelegation(address user, uint256 tokenId) public view returns (uint256) {
         return _userDelegations[user][tokenId];
     }
@@ -222,8 +221,6 @@ contract Chamber is Board, Wallet {
 
         revert("Caller is not a director");
     }
-<<<<<<< HEAD
-=======
 
     /// WALLET ///
 
@@ -250,5 +247,4 @@ contract Chamber is Board, Wallet {
     receive() external payable {
         emit Received(msg.sender, msg.value);
     }
->>>>>>> d8a803a (Forge fmt)
 }
