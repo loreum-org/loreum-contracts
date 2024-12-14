@@ -3,339 +3,216 @@
 
 pragma solidity 0.8.24;
 
-import { IChamber } from "src/interfaces/IChamber.sol";
-import { IGuard } from "src/interfaces/IGuard.sol";
-import { Common, IERC721, IERC20, ECDSA, SafeERC20 } from "src/Common.sol";
+import {Board} from "src/Board.sol";
+import {Wallet} from "src/Wallet.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
+import {IERC721} from "lib/openzeppelin-contracts/contracts/interfaces/IERC721.sol";
 
-contract Chamber is IChamber, Common {
+/// @title Chamber Contract
+/// @notice This contract manages a multisig wallet with governance and delegation features using ERC20 and ERC721 tokens.
+contract Chamber is Board, Wallet {
+    /// @notice ERC20 governance token
+    IERC20 public token;
+    /// @notice ERC721 membership token
+    IERC721 public nft;
 
-    /// @notice memberToken The ERC721 contract used for membership.
-    address public memberToken;
+    /// @notice Mapping to track delegated amounts per user per tokenId
+    mapping(address => mapping(uint256 => uint256)) private _userDelegations;
 
-    /// @notice govToken The ERC20 contract used for staking.
-    address public govToken;
+    /// @notice Emitted when the contract receives Ether
+    /// @param sender The address that sent the Ether
+    /// @param amount The amount of Ether received
+    event Received(address indexed sender, uint256 amount);
 
-    /// @notice leaderboard ff members based on total delegation.
-    /// @dev    Limited to top 5 leaders requiring 3 approvals
-    uint256[] public leaderboard;
+    /// @notice Emitted when a user delegates tokens to a tokenId
+    /// @param sender The address of the user delegating tokens
+    /// @param tokenId The tokenId to which tokens are delegated
+    /// @param amount The amount of tokens delegated
+    event Delegate(address indexed sender, uint256 tokenId, uint256 amount);
 
-    /// @notice Counter to track the nonce for each proposal
-    uint256 public nonce;
+    /// @notice Emitted when a user undelegates tokens from a tokenId
+    /// @param sender The address of the user undelegating tokens
+    /// @param tokenId The tokenId from which tokens are undelegated
+    /// @param amount The amount of tokens undelegated
+    event Undelegate(address indexed sender, uint256 tokenId, uint256 amount);
 
-    /// @notice totalDelegation Tracks the amount of govToken delegated to a given NFT ID.
-    /// @dev    1st element -> NFT tokenID, 2nd element -> amountDelegated.
-    mapping(uint256 tokenID => uint256 amountDelegated) public totalDelegation;
+    /// @notice Emitted when the number of seats is updated
+    /// @param signedData The signed data for the update
+    /// @param numOfSeats The new number of seats
+    event UpdateSeats(bytes[] signedData, uint256 numOfSeats);
 
-    /// @notice accountDelegation Tracks a given address's delegatation balance of govToken for a given NFT ID.
-    /// @dev    1st element -> user address, 2nd element -> NFT tokenID, 3rd element -> amountDelegated.
-    mapping(address userAddress => mapping(uint256 tokenID => uint256 amountDelegated)) public accountDelegation;
-    
-    /// @notice proposals Mapping of the Proposals.
-    /// @dev    1st element -> index, 2nd element -> Proposal struct
-    mapping(uint256 index => Proposal) private proposals;
-
-    /// @inheritdoc IChamber
-    function proposal(uint256 proposalId) public view returns(uint256 approvals, State state){
-        return (proposals[proposalId].approvals, proposals[proposalId].state);
+    /// @notice Initializes the Chamber contract with the given ERC20 and ERC721 tokens and sets the number of seats
+    /// @param erc20Token The address of the ERC20 token
+    /// @param erc721Token The address of the ERC721 token
+    /// @param seats The initial number of seats
+    constructor(address erc20Token, address erc721Token, uint256 seats) {
+        token = IERC20(erc20Token);
+        nft = IERC721(erc721Token);
+        _setSeats(seats);
     }
 
-    /// @inheritdoc IChamber
-    mapping(uint256 proposalId => mapping(uint256 tokenId=> bool)) public voted;
+    /// @notice Delegates a specified amount of tokens to a tokenId
+    /// @param tokenId The tokenId to which tokens are delegated
+    /// @param amount The amount of tokens to delegate
+    function delegate(uint256 tokenId, uint256 amount) external {
+        require(amount > 0, "Amount must be greater than 0");
 
-    /// @notice contrcutor disables initialize function on deployment of base implementation.
-    constructor() { _disableInitializers(); }
-    
-    /// @inheritdoc IChamber
-    function initialize(address _memberToken, address _govToken) external initializer {
-        require(_memberToken != address(0),"The address is zero");
-        require(_govToken != address(0),"The address is zero");
-        memberToken = _memberToken;
-        govToken = _govToken;
-    }
-    
-    /// @inheritdoc IChamber
-    function getLeaderboard() external view returns (uint256[] memory leaders, uint256[] memory delegation) {
-        uint256[] memory _leaderboard = leaderboard;
-        uint256[] memory _delegations = new uint256[](_leaderboard.length);
-        for (uint256 i = 0; i < _leaderboard.length; i++) {
-            _delegations[i] = totalDelegation[_leaderboard[i]];
-        }
-        return (_leaderboard, _delegations);
-    }
+        // Update user delegation amount
+        _userDelegations[msg.sender][tokenId] += amount;
 
-    /// @inheritdoc IChamber
-    function create(address[] memory targets, uint256[] memory values, bytes[] memory datas) external {
-        if(IERC721(memberToken).balanceOf(_msgSender()) < 1) revert insufficientBalance();
-        uint256[5] memory topFiveLeader;
-        for (uint256 i=0; i<5; i++){
-            topFiveLeader[i] = leaderboard[i];
-        }
-        nonce++;
-        proposals[nonce] = Proposal({
-            target: targets,
-            value: values,
-            data: datas,
-            voters: topFiveLeader,
-            approvals: 0,
-            nonce: nonce,
-            state: State.Initialized
-        });
-        emit CreatedProposal(nonce, targets, values, datas, topFiveLeader, nonce);
-    }
-
-    /// @inheritdoc IChamber
-    function approve(uint256 proposalId, uint256 tokenId) external {
-        if(_msgSender() != IERC721(memberToken).ownerOf(tokenId)) revert invalidApproval("Sender isn't NFT owner");
-        if(proposals[proposalId].state != State.Initialized) revert invalidApproval("Proposal isn't Initialized");
-        if(voted[proposalId][tokenId]) revert invalidApproval("TokenID already voted");
-
-        uint256[5] memory voters = proposals[proposalId].voters;
-        bool onVoterList = false;
-
-        for (uint i = 0; i < voters.length; i++) {
-            if (tokenId == voters[i]) onVoterList = true;
-        }
-
-        if (!onVoterList) revert invalidApproval("TokenId not on voter list");
-
-        voted[proposalId][tokenId] = true;
-        proposals[proposalId].approvals += 1;
-        emit ApprovedProposal(proposalId, tokenId, proposals[proposalId].approvals);
-    }
-
-    /// @inheritdoc IChamber
-    function promote(uint256 amount, uint256 tokenId) public nonReentrant {
-        if(amount == 0 && tokenId == 0) revert invalidPromotion();
-        
-        totalDelegation[tokenId] += amount;
-        accountDelegation[_msgSender()][tokenId] += amount;
-        _updateLeaderboard(tokenId);
-        
-        SafeERC20.safeIncreaseAllowance(IERC20(govToken), address(this), amount);
-        SafeERC20.safeTransferFrom(IERC20(govToken), _msgSender(), address(this), amount);
-        emit Promotion(_msgSender(), amount, tokenId);
-    }
-
-    /// @inheritdoc IChamber
-    function demote(uint256 amount, uint256 tokenId) public nonReentrant {
-        if(amount == 0 && tokenId == 0) revert invalidDemotion();
-        if(accountDelegation[_msgSender()][tokenId] < amount) revert invalidDemotion();
-        
-        totalDelegation[tokenId] -= amount;
-        accountDelegation[_msgSender()][tokenId] -= amount;
-        if (totalDelegation[tokenId]== 0){
-            _removeFromLeaderboard(tokenId);
+        // Update or insert node
+        if (nodes[tokenId].tokenId == tokenId) {
+            // Node exists, update amount and reposition
+            nodes[tokenId].amount += amount;
+            _reposition(tokenId);
         } else {
-            _updateLeaderboard(tokenId);
+            // Create new node
+            _insert(tokenId, amount);
         }
-        
-        SafeERC20.safeTransfer(IERC20(govToken), _msgSender(), amount);
-        SafeERC20.safeDecreaseAllowance(IERC20(govToken), address(this), amount);
 
-        emit Demotion(_msgSender(), amount, tokenId);
+        // Transfer tokens from user
+        require(token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+
+        // Emit Delegate event
+        emit Delegate(msg.sender, tokenId, amount);
     }
 
-    /// @inheritdoc IChamber
-    function execute(uint256 proposalId, uint256 tokenId) public noReentrancy{
+    /// @notice Undelegates a specified amount of tokens from a tokenId
+    /// @param tokenId The tokenId from which tokens are undelegated
+    /// @param amount The amount of tokens to undelegate
+    function undelegate(uint256 tokenId, uint256 amount) external {
+        require(amount > 0, "Amount must be greater than 0");
+        require(_userDelegations[msg.sender][tokenId] >= amount, "Insufficient delegated amount");
 
-        // TODO Implement Gas handling and Optimizations
+        // Update user delegation amount
+        _userDelegations[msg.sender][tokenId] -= amount;
 
-        if( proposalId > 1 && !(_isCancellationProposal(proposalId)) ){
-            require((proposals[proposalId-1].state == State.Executed || proposals[proposalId-1].state == State.Canceled), "Previous proposal must be resolved.");
-        }
+        // Update node
+        nodes[tokenId].amount -= amount;
 
-        require(proposals[proposalId].approvals >= 3, "Not enough approvals"); // TODO: Make quorum dynamic
-
-        bool validVoter = false;
-        for (uint256 i = 0 ; i < 5; i++){
-            if (tokenId == proposals[proposalId].voters[i]){
-                validVoter = true;
-            }
-        }
-        require(validVoter, "Not a voter");
-
-        if(proposals[proposalId].state != State.Initialized) revert invalidProposalState();
-       
-        Proposal memory proposalData = proposals[proposalId];
-        proposals[proposalId].state = State.Executed;
-
-        address guard = getGuard();
-        if (guard != address (0)){
-            IGuard(guard).checkTransaction(
-                proposals[proposalId].target,
-                proposals[proposalId].value,
-                proposals[proposalId].data,
-                proposals[proposalId].voters,
-                proposals[proposalId].state,
-                msg.sender,
-                proposalId,
-                tokenId
-            );
-        }
-        bool finalSuccess = false;
-        for (uint256 i = 0; i < proposalData.data.length; i++) {
-            (bool success,) = proposalData.target[i].call{value: proposalData.value[i]}(proposalData.data[i]);
-            finalSuccess = success;
-            if(!success) revert executionFailed();
-        }
-        {
-            if (guard != address(0)) {
-                IGuard(guard).checkAfterExecution(constructMessageHash(proposalId, tokenId), finalSuccess);
-            }
-        }
-        emit ExecutedProposal(proposalId);
-    }
-
-    /// @notice Checks if the proposal corresponds to a cancellation request.
-    /// @param _proposalId The ID of the proposal to check.
-    /// @return Whether the proposal is a cancellation request or not.
-    function _isCancellationProposal(uint256 _proposalId) private view returns (bool) {
-        bytes4 data = bytes4(proposals[_proposalId].data[0]);
-        for (uint i = 0 ; i < 4; i++){
-            if (data[i] != CANCEL_PROPOSAL_SELECTOR[i]){
-                return false;
-            }
-        }
-        return true;
-    }
-
-    //// @inheritdoc IChamber
-    function cancel(uint256 proposalId) external authorized {
-        require(proposals[proposalId].state == State.Initialized, "Proposal is not initialized");
-        proposals[proposalId].target = new address[](1);
-        proposals[proposalId].value = new uint256[](1);
-        proposals[proposalId].data = new bytes[](1);
-
-        proposals[proposalId].state = State.Canceled;
-
-        emit CanceledProposal(proposalId);
-    }
-
-
-    /// @notice _updateLeaderboard Updates the leaderboard array 
-    /// @param _tokenId The ID of the NFT to update.
-    function _updateLeaderboard(uint256 _tokenId) private {
-        bool tokenIdExists = false;
-        uint256 leaderboardLength = leaderboard.length;
-        for (uint256 i = 0; i < leaderboardLength; i++) {
-            if (leaderboard[i] == _tokenId) {
-                tokenIdExists = true;
-                break;
-            }
-        }
-        if (tokenIdExists) {
-            _bubbleSort();
+        if (nodes[tokenId].amount == 0) {
+            // Remove node if amount is 0
+            _remove(tokenId);
         } else {
-            leaderboard.push(_tokenId);
-            _bubbleSort();
+            // Reposition node based on new amount
+            _reposition(tokenId);
         }
+
+        // Transfer tokens back to user
+        require(token.transfer(msg.sender, amount), "Transfer failed");
+
+        emit Undelegate(msg.sender, tokenId, amount);
     }
 
-    /// @notice _bubbleSort Updates the leaderboard with bubble sort
-    function _bubbleSort() private {
-        bool swapped;
-        uint256 leaderboardLength = leaderboard.length;
-        for (uint256 i = 0; i < leaderboardLength; i++) {
-            swapped = false;
-            for (uint256 j = 0; j < leaderboard.length - i - 1; j++) {
-                if (totalDelegation[leaderboard[j]] < totalDelegation[leaderboard[j + 1]]) {
-                    (leaderboard[j], leaderboard[j + 1]) = (leaderboard[j + 1], leaderboard[j]);
-                    swapped = true;
-                }
-            }
-            if (!swapped) {
-                break;
-            }
+    /// BOARD ///
+
+    /// @notice Retrieves the node information for a given tokenId
+    /// @param tokenId The tokenId to retrieve information for
+    /// @return The Node struct containing the node information
+    function getMember(uint256 tokenId) public view returns (Node memory) {
+        return _getNode(tokenId);
+    }
+
+    /// @notice Retrieves the top tokenIds and their amounts
+    /// @param count The number of top tokenIds to retrieve
+    /// @return An array of top tokenIds and their corresponding amounts
+    function getTop(uint256 count) public view returns (uint256[] memory, uint256[] memory) {
+        return _getTop(count);
+    }
+
+    /// @notice Retrieves the delegation amount for a user and tokenId
+    /// @param user The address of the user
+    /// @param tokenId The tokenId to check
+    /// @return The amount of tokens delegated by the user to the tokenId
+    function getDelegation(address user, uint256 tokenId) public view returns (uint256) {
+        return _userDelegations[user][tokenId];
+    }
+
+    /// @notice Retrieves the current quorum
+    /// @return The current quorum value
+    function getQuorum() public view returns (uint256) {
+        return _getQuorum();
+    }
+
+    /// @notice Retrieves the current number of seats
+    /// @return The current number of seats
+    function getSeats() public view returns (uint256) {
+        return _getSeats();
+    }
+
+    /// @notice Retrieves the addresses of the current directors
+    /// @return An array of addresses representing the current directors
+    function getDirectors() public view returns (address[] memory) {
+        (uint256[] memory topTokenIds,) = getTop(_getSeats());
+        address[] memory topOwners = new address[](topTokenIds.length);
+
+        for (uint256 i = 0; i < topTokenIds.length; i++) {
+            topOwners[i] = nft.ownerOf(topTokenIds[i]);
         }
+
+        return topOwners;
     }
 
-    /// @notice _removeFromLeaderboard Removes the Token ID
-    /// @param _tokenId The ID of the NFT to remove.
-    function _removeFromLeaderboard(uint256 _tokenId) private {
-        for (uint256 i = 0; i < leaderboard.length; i++) {
-            if (leaderboard[i] == _tokenId) {
-                for (uint256 j = i; j < leaderboard.length - 1; j++) {
-                    leaderboard[j] = leaderboard[j + 1];
-                }
-                leaderboard.pop();
-                break;
-            }
-        }
+    /// @notice Retrieves the list of addresses that have requested a seat update
+    /// @return An array of addresses that have requested a seat update
+    function getSeatUpdate() public view returns (address[] memory) {
+        return _getSeatUpdateList();
     }
 
-    /// @inheritdoc IChamber
-    function verifySignature(
-        uint256 proposalId,
-        uint256 tokenId,
-        bytes memory signature
-    ) public view returns (bool) {
-        bytes32 messageHash = constructMessageHash(proposalId, tokenId);
-        bytes32 digest = toEthSignedMessageHash(messageHash);
-        address signer = ECDSA.recover(digest, signature);
-        return signer == IERC721(memberToken).ownerOf(tokenId);
+    /// @notice Updates the number of seats
+    /// @param numOfSeats The new number of seats
+    function updateNumSeats(uint256 numOfSeats) public onlyDirector {
+        _setSeats(numOfSeats);
     }
 
-    /// @inheritdoc IChamber
-    function domainSeparator() public view returns (bytes32) {
-        uint256 chainId;
-        assembly {
-           chainId := chainid()
-        }
-        return keccak256(abi.encode(DOMAIN_SEPARATOR_TYPEHASH, chainId, this));
+    /// WALLET ///
+
+    /// @notice Submits a new transaction for approval
+    /// @param to The address to send the transaction to
+    /// @param value The amount of Ether to send
+    /// @param data The data to include in the transaction
+    function submitTransaction(address to, uint256 value, bytes memory data) public onlyDirector {
+        _submitTransaction(to, value, data);
     }
 
-    function encodeData(
-        address[]   memory  to,
-        uint256[]   memory  value,
-        bytes[]     memory  data,
-        uint256[5]  memory  voters,
-        uint256             approvals,
-        uint256             _nonce,
-        State               state,
-        uint256             proposalId,
-        uint256             tokenId
-    )internal view returns(bytes memory){
-        bytes32 txHash  = keccak256(
-            abi.encode(
-                to,
-                value,
-                data,
-                voters,
-                approvals,
-                _nonce,
-                state,
-                proposalId,
-                tokenId
-            )
+    /// @notice Confirms a transaction
+    /// @param transactionId The ID of the transaction to confirm
+    function confirmTransaction(uint256 transactionId) public onlyDirector {
+        _confirmTransaction(transactionId);
+    }
+
+    /// @notice Executes a transaction if it has enough confirmations
+    /// @param transactionId The ID of the transaction to execute
+    function executeTransaction(uint256 transactionId) public onlyDirector {
+        require(
+            getTransaction(transactionId).numConfirmations >= getQuorum(),
+            "Cannot execute transaction: not enough confirmations"
         );
-        return abi.encodePacked(bytes1(0x19), bytes1(0x01), domainSeparator(), txHash);
+        _executeTransaction(transactionId);
     }
 
-    /// @inheritdoc IChamber
-    function constructMessageHash(
-        uint256 proposalId, 
-        uint256 tokenId
-    ) public view returns (bytes32) {
-        return keccak256(
-            encodeData(
-                proposals[proposalId].target,
-                proposals[proposalId].value,
-                proposals[proposalId].data,
-                proposals[proposalId].voters,
-                proposals[proposalId].approvals,
-                proposals[proposalId].nonce,
-                proposals[proposalId].state,
-                proposalId,
-                tokenId
-            )
-        );
+    /// @notice Revokes a confirmation for a transaction
+    /// @param transactionId The ID of the transaction to revoke confirmation for
+    function revokeConfirmation(uint256 transactionId) public onlyDirector {
+        _revokeConfirmation(transactionId);
     }
 
-    fallback() external payable {
-        if (msg.value > 0) emit ReceivedEther(_msgSender(), msg.value);
-    }
-
+    /// @notice Fallback function to receive Ether
     receive() external payable {
-        if (msg.value > 0) emit ReceivedFallback(msg.sender, msg.value);
+        emit Received(msg.sender, msg.value);
+    }
+
+    /// @notice Modifier to restrict access to only directors
+    modifier onlyDirector() {
+        (uint256[] memory topTokenIds,) = getTop(_getSeats());
+
+        for (uint256 i = 0; i < topTokenIds.length; i++) {
+            if (nft.ownerOf(topTokenIds[i]) == msg.sender) {
+                _;
+                return;
+            }
+        }
+
+        revert("Caller is not a director");
     }
 }
