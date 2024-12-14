@@ -17,8 +17,8 @@ abstract contract Wallet {
         uint256 numConfirmations;
     }
 
-    Transaction[] public transactions;
-    mapping(uint256 => mapping(address => bool)) public isConfirmed;
+    Transaction[] private transactions;
+    mapping(uint256 => mapping(address => bool)) private isConfirmed;
 
     modifier txExists(uint256 _txIndex) {
         require(_txIndex < transactions.length, "Tx does not exist");
@@ -77,10 +77,15 @@ abstract contract Wallet {
         emit ExecuteTransaction(msg.sender, _txIndex);
     }
 
+    /// @notice Returns the total number of transactions
+    /// @return The total number of transactions
     function getTransactionCount() public view returns (uint256) {
         return transactions.length;
     }
 
+    /// @notice Returns the details of a specific transaction
+    /// @param _txIndex The index of the transaction to retrieve
+    /// @return The Transaction struct containing the transaction details
     function getTransaction(uint256 _txIndex) public view returns (Transaction memory) {
         Transaction storage transaction = transactions[_txIndex];
 

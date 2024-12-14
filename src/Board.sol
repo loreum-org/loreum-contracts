@@ -21,9 +21,9 @@ abstract contract Board {
     address[] private updateSeatList;
 
     // Head and tail of the list (0 represents null)
-    uint256 public head;
-    uint256 public tail;
-    uint256 public size;
+    uint256 private head;
+    uint256 private tail;
+    uint256 private size;
 
     function _getNode(uint256 tokenId) internal view returns (Node memory) {
         return nodes[tokenId];

@@ -8,24 +8,52 @@ import {Wallet} from "src/Wallet.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {IERC721} from "lib/openzeppelin-contracts/contracts/interfaces/IERC721.sol";
 
+/// @title Chamber Contract
+/// @notice This contract manages a multisig wallet with governance and delegation features using ERC20 and ERC721 tokens.
 contract Chamber is Board, Wallet {
+    /// @notice ERC20 governance token
     IERC20 public token;
+    /// @notice ERC721 membership token
     IERC721 public nft;
 
-    // Mapping to track delegated amounts per user per tokenId
+    /// @notice Mapping to track delegated amounts per user per tokenId
     mapping(address => mapping(uint256 => uint256)) private _userDelegations;
 
+    /// @notice Emitted when the contract receives Ether
+    /// @param sender The address that sent the Ether
+    /// @param amount The amount of Ether received
     event Received(address indexed sender, uint256 amount);
+
+    /// @notice Emitted when a user delegates tokens to a tokenId
+    /// @param sender The address of the user delegating tokens
+    /// @param tokenId The tokenId to which tokens are delegated
+    /// @param amount The amount of tokens delegated
     event Delegate(address indexed sender, uint256 tokenId, uint256 amount);
+
+    /// @notice Emitted when a user undelegates tokens from a tokenId
+    /// @param sender The address of the user undelegating tokens
+    /// @param tokenId The tokenId from which tokens are undelegated
+    /// @param amount The amount of tokens undelegated
     event Undelegate(address indexed sender, uint256 tokenId, uint256 amount);
+
+    /// @notice Emitted when the number of seats is updated
+    /// @param signedData The signed data for the update
+    /// @param numOfSeats The new number of seats
     event UpdateSeats(bytes[] signedData, uint256 numOfSeats);
 
+    /// @notice Initializes the Chamber contract with the given ERC20 and ERC721 tokens and sets the number of seats
+    /// @param erc20Token The address of the ERC20 token
+    /// @param erc721Token The address of the ERC721 token
+    /// @param seats The initial number of seats
     constructor(address erc20Token, address erc721Token, uint256 seats) {
         token = IERC20(erc20Token);
         nft = IERC721(erc721Token);
         _setSeats(seats);
     }
 
+    /// @notice Delegates a specified amount of tokens to a tokenId
+    /// @param tokenId The tokenId to which tokens are delegated
+    /// @param amount The amount of tokens to delegate
     function delegate(uint256 tokenId, uint256 amount) external {
         require(amount > 0, "Amount must be greater than 0");
 
@@ -49,6 +77,9 @@ contract Chamber is Board, Wallet {
         emit Delegate(msg.sender, tokenId, amount);
     }
 
+    /// @notice Undelegates a specified amount of tokens from a tokenId
+    /// @param tokenId The tokenId from which tokens are undelegated
+    /// @param amount The amount of tokens to undelegate
     function undelegate(uint256 tokenId, uint256 amount) external {
         require(amount > 0, "Amount must be greater than 0");
         require(_userDelegations[msg.sender][tokenId] >= amount, "Insufficient delegated amount");
@@ -75,26 +106,42 @@ contract Chamber is Board, Wallet {
 
     /// BOARD ///
 
+    /// @notice Retrieves the node information for a given tokenId
+    /// @param tokenId The tokenId to retrieve information for
+    /// @return The Node struct containing the node information
     function getMember(uint256 tokenId) public view returns (Node memory) {
         return _getNode(tokenId);
     }
 
+    /// @notice Retrieves the top tokenIds and their amounts
+    /// @param count The number of top tokenIds to retrieve
+    /// @return An array of top tokenIds and their corresponding amounts
     function getTop(uint256 count) public view returns (uint256[] memory, uint256[] memory) {
         return _getTop(count);
     }
 
+    /// @notice Retrieves the delegation amount for a user and tokenId
+    /// @param user The address of the user
+    /// @param tokenId The tokenId to check
+    /// @return The amount of tokens delegated by the user to the tokenId
     function getDelegation(address user, uint256 tokenId) public view returns (uint256) {
         return _userDelegations[user][tokenId];
     }
 
+    /// @notice Retrieves the current quorum
+    /// @return The current quorum value
     function getQuorum() public view returns (uint256) {
         return _getQuorum();
     }
 
+    /// @notice Retrieves the current number of seats
+    /// @return The current number of seats
     function getSeats() public view returns (uint256) {
         return _getSeats();
     }
 
+    /// @notice Retrieves the addresses of the current directors
+    /// @return An array of addresses representing the current directors
     function getDirectors() public view returns (address[] memory) {
         (uint256[] memory topTokenIds,) = getTop(_getSeats());
         address[] memory topOwners = new address[](topTokenIds.length);
@@ -106,14 +153,56 @@ contract Chamber is Board, Wallet {
         return topOwners;
     }
 
-    function getSeatUpdateList() public view onlyDirector returns (address[] memory) {
+    /// @notice Retrieves the list of addresses that have requested a seat update
+    /// @return An array of addresses that have requested a seat update
+    function getSeatUpdate() public view returns (address[] memory) {
         return _getSeatUpdateList();
     }
 
+    /// @notice Updates the number of seats
+    /// @param numOfSeats The new number of seats
     function updateNumSeats(uint256 numOfSeats) public onlyDirector {
         _setSeats(numOfSeats);
     }
 
+    /// WALLET ///
+
+    /// @notice Submits a new transaction for approval
+    /// @param to The address to send the transaction to
+    /// @param value The amount of Ether to send
+    /// @param data The data to include in the transaction
+    function submitTransaction(address to, uint256 value, bytes memory data) public onlyDirector {
+        _submitTransaction(to, value, data);
+    }
+
+    /// @notice Confirms a transaction
+    /// @param transactionId The ID of the transaction to confirm
+    function confirmTransaction(uint256 transactionId) public onlyDirector {
+        _confirmTransaction(transactionId);
+    }
+
+    /// @notice Executes a transaction if it has enough confirmations
+    /// @param transactionId The ID of the transaction to execute
+    function executeTransaction(uint256 transactionId) public onlyDirector {
+        require(
+            getTransaction(transactionId).numConfirmations >= getQuorum(),
+            "Cannot execute transaction: not enough confirmations"
+        );
+        _executeTransaction(transactionId);
+    }
+
+    /// @notice Revokes a confirmation for a transaction
+    /// @param transactionId The ID of the transaction to revoke confirmation for
+    function revokeConfirmation(uint256 transactionId) public onlyDirector {
+        _revokeConfirmation(transactionId);
+    }
+
+    /// @notice Fallback function to receive Ether
+    receive() external payable {
+        emit Received(msg.sender, msg.value);
+    }
+
+    /// @notice Modifier to restrict access to only directors
     modifier onlyDirector() {
         (uint256[] memory topTokenIds,) = getTop(_getSeats());
 
@@ -125,31 +214,5 @@ contract Chamber is Board, Wallet {
         }
 
         revert("Caller is not a director");
-    }
-
-    /// WALLET ///
-
-    function submitTransaction(address to, uint256 value, bytes memory data) public onlyDirector {
-        _submitTransaction(to, value, data);
-    }
-
-    function confirmTransaction(uint256 transactionId) public onlyDirector {
-        _confirmTransaction(transactionId);
-    }
-
-    function executeTransaction(uint256 transactionId) public onlyDirector {
-        require(
-            getTransaction(transactionId).numConfirmations >= getQuorum(),
-            "Cannot execute transaction: not enough confirmations"
-        );
-        _executeTransaction(transactionId);
-    }
-
-    function revokeConfirmation(uint256 transactionId) public onlyDirector {
-        _revokeConfirmation(transactionId);
-    }
-
-    receive() external payable {
-        emit Received(msg.sender, msg.value);
     }
 }
