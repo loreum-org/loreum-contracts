@@ -41,11 +41,6 @@ contract Chamber is Board, Wallet {
     /// @param numOfSeats The new number of seats
     event UpdateSeats(bytes[] signedData, uint256 numOfSeats);
 
-    /// @notice Emitted when the number of seats is updated
-    /// @param signedData The signed data for the update
-    /// @param numOfSeats The new number of seats
-    event UpdateSeats(bytes[] signedData, uint256 numOfSeats);
-
     /// @notice Initializes the Chamber contract with the given ERC20 and ERC721 tokens and sets the number of seats
     /// @param erc20Token The address of the ERC20 token
     /// @param erc721Token The address of the ERC721 token
@@ -220,31 +215,5 @@ contract Chamber is Board, Wallet {
         }
 
         revert("Caller is not a director");
-    }
-
-    /// WALLET ///
-
-    function submitTransaction(address to, uint256 value, bytes memory data) public onlyDirector {
-        _submitTransaction(to, value, data);
-    }
-
-    function confirmTransaction(uint256 transactionId) public onlyDirector {
-        _confirmTransaction(transactionId);
-    }
-
-    function executeTransaction(uint256 transactionId) public onlyDirector {
-        require(
-            getTransaction(transactionId).numConfirmations >= getQuorum(),
-            "Cannot execute transaction: not enough confirmations"
-        );
-        _executeTransaction(transactionId);
-    }
-
-    function revokeConfirmation(uint256 transactionId) public onlyDirector {
-        _revokeConfirmation(transactionId);
-    }
-
-    receive() external payable {
-        emit Received(msg.sender, msg.value);
     }
 }
