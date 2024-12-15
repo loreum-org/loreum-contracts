@@ -305,4 +305,242 @@ contract ChamberTest is Test {
         vm.prank(user3);
         chamber.updateNumSeats(6);
     }
+
+    function test_Chamber_ZeroAmountDelegation() public {
+        uint256 amount = 0;
+        uint256 tokenId1 = 1;
+
+        // Mint NFT to user
+        MockERC721(address(nft)).mint(user1, tokenId1);
+
+        // Mint tokens to user
+        MockERC20(address(token)).mint(user1, amount);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        vm.expectRevert();
+        chamber.delegate(tokenId1, amount);
+        vm.stopPrank();
+    }
+
+    function test_Chamber_DelegateFunction_NodeTokenIdCheck() public {
+        uint256 amount = 1000;
+        uint256 tokenId1 = 1;
+
+        // Mint NFT to user
+        MockERC721(address(nft)).mint(user1, tokenId1);
+
+        // Mint tokens to user
+        MockERC20(address(token)).mint(user1, amount);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId1, amount / 2);
+        chamber.delegate(tokenId1, amount / 2);
+        vm.stopPrank();
+    }
+
+        function test_Chamber_DelegateFunction_BadTransfer() public {
+        uint256 amount = 1000;
+        uint256 tokenId1 = 1;
+
+        // Mint NFT to user
+        MockERC721(address(nft)).mint(user1, tokenId1);
+
+        // Mint tokens to user
+        MockERC20(address(token)).mint(user1, amount);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        MockERC20(address(token)).approve(address(chamber), amount);
+
+        vm.expectRevert();
+        chamber.delegate(tokenId1, amount + 1);
+        vm.stopPrank();
+    }
+
+    function test_Chamber_UndelegateRevertsWithZeroAmount() public {
+        uint256 amount = 1000;
+        uint256 tokenId1 = 1;
+
+        // Mint NFT to user
+        MockERC721(address(nft)).mint(user1, tokenId1);
+
+        // Mint tokens to user
+        MockERC20(address(token)).mint(user1, amount);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId1, amount);
+        
+        // Attempt to undelegate with zero amount
+        vm.expectRevert();
+        chamber.undelegate(tokenId1, 0);
+        vm.stopPrank();
+    }
+
+    function test_Chamber_UndelegateRevertsWithExcessAmount() public {
+        uint256 amount = 1000;
+        uint256 tokenId1 = 1;
+
+        // Mint NFT to user
+        MockERC721(address(nft)).mint(user1, tokenId1);
+
+        // Mint tokens to user
+        MockERC20(address(token)).mint(user1, amount);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId1, amount);
+
+        // Attempt to undelegate more than the delegated amount
+        vm.expectRevert();
+        chamber.undelegate(tokenId1, amount + 1);
+        vm.stopPrank();
+    }
+
+    function test_Chamber_DelegateAndUndelegate() public {
+        uint256 amount = 1000;
+        uint256 tokenId1 = 1;
+
+        // Mint NFT to user
+        MockERC721(address(nft)).mint(user1, tokenId1);
+
+        // Mint tokens to user
+        MockERC20(address(token)).mint(user1, amount);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId1, amount);
+
+        // Check delegation
+        assertEq(chamber.getDelegation(user1, tokenId1), amount);
+
+        // Undelegate tokens
+        chamber.undelegate(tokenId1, amount);
+
+        // Check undelegation
+        assertEq(chamber.getDelegation(user1, tokenId1), 0);
+        vm.stopPrank();
+    }
+
+    function test_Chamber_UndelegateUpdatesNodeAmount() public {
+        uint256 amount = 1000;
+        uint256 tokenId1 = 1;
+
+        // Mint NFT to user
+        MockERC721(address(nft)).mint(user1, tokenId1);
+
+        // Mint tokens to user
+        MockERC20(address(token)).mint(user1, amount);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId1, amount);
+
+        // Check delegation
+        assertEq(chamber.getDelegation(user1, tokenId1), amount);
+
+        // Undelegate part of the tokens
+        uint256 undelegateAmount = 500;
+        chamber.undelegate(tokenId1, undelegateAmount);
+
+        // Check updated delegation
+        assertEq(chamber.getDelegation(user1, tokenId1), amount - undelegateAmount);
+
+        // Check node amount
+        Board.Node memory node = chamber.getMember(tokenId1);
+        assertEq(node.amount, amount - undelegateAmount);
+        vm.stopPrank();
+    }
+
+    function test_Chamber_UndelegateRemovesNodeIfAmountIsZero() public {
+        uint256 amount = 1000;
+        uint256 tokenId1 = 1;
+
+        // Mint NFT to user
+        MockERC721(address(nft)).mint(user1, tokenId1);
+
+        // Mint tokens to user
+        MockERC20(address(token)).mint(user1, amount);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId1, amount);
+
+        // Check delegation
+        assertEq(chamber.getDelegation(user1, tokenId1), amount);
+
+        // Undelegate all tokens
+        chamber.undelegate(tokenId1, amount);
+
+        // Check updated delegation
+        assertEq(chamber.getDelegation(user1, tokenId1), 0);
+        vm.stopPrank();
+    }
+
+    function test_Chamber_GetSeats() public view{
+        uint256 _seats = chamber.getSeats();
+        assertEq(_seats, 5);
+    }
+
+    function test_Chamber_GetDirectors() public {
+        // Mint NFTs to users
+        uint256 tokenId1 = 1;
+        uint256 tokenId2 = 2;
+        uint256 tokenId3 = 3;
+        MockERC721(address(nft)).mint(user1, tokenId1);
+        MockERC721(address(nft)).mint(user2, tokenId2);
+        MockERC721(address(nft)).mint(user3, tokenId3);
+
+        // Mint tokens to users
+        uint256 amount = 1000;
+        MockERC20(address(token)).mint(user1, amount);
+        MockERC20(address(token)).mint(user2, amount);
+        MockERC20(address(token)).mint(user3, amount);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId1, amount);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId2, amount);
+        vm.stopPrank();
+
+        vm.startPrank(user3);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId3, amount);
+        vm.stopPrank();
+
+        // Get directors
+        address[] memory directors = chamber.getDirectors();
+
+        // Check directors
+        assertEq(directors.length, 3);
+        assertEq(directors[0], user1);
+        assertEq(directors[1], user2);
+        assertEq(directors[2], user3);
+    }
+
+    function test_Chamber_GetSeatUpdates() public view {
+        address[] memory updaters = chamber.getSeatUpdate();
+        assertEq(updaters.length, 0);
+    }
+
+    function test_Chamber_ExecuteTransaction_NotDirector() public {
+        vm.startPrank(address(420));
+        vm.expectRevert("Caller is not a director");
+        chamber.executeTransaction(0);
+        vm.stopPrank();
+    }
 }

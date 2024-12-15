@@ -77,4 +77,17 @@ contract WalletTest is Test {
 
         assertEq(count, 1);
     }
+
+    function test_Wallet_GetConfirmation() public {
+        address to = address(0x3);
+        uint256 value = 1 ether;
+        bytes memory data = "";
+
+        wallet.submitTransaction(to, value, data);
+        wallet.confirmTransaction(0);
+
+        bool isConfirmed = wallet.getConfirmation(0, address(this));
+
+        assertEq(isConfirmed, true);
+    }
 }

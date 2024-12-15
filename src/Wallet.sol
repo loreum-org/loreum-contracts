@@ -97,4 +97,12 @@ abstract contract Wallet {
             numConfirmations: transaction.numConfirmations
         });
     }
+
+    /// @notice Checks if a transaction is confirmed by a specific director
+    /// @param txIndex The index of the transaction to check
+    /// @param director The address of the director to check confirmation for
+    /// @return True if the transaction is confirmed by the director, false otherwise
+    function getConfirmation(uint256 txIndex, address director) public view returns (bool) {
+        return isConfirmed[txIndex][director];
+    }
 }
