@@ -5,6 +5,9 @@ abstract contract Board {
     event SetSeats(uint256 numOfSeats);
     event SetSeatsCall(address caller);
 
+    // Custom Errors
+    error AlreadySentUpdateRequest();
+
     struct Node {
         uint256 tokenId;
         uint256 amount;
@@ -134,7 +137,7 @@ abstract contract Board {
 
         for (uint256 i = 0; i < updateSeatList.length; i++) {
             if (updateSeatList[i] == msg.sender) {
-                revert("Already sent update request");
+                revert AlreadySentUpdateRequest();
             }
         }
 

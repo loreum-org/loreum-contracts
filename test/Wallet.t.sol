@@ -13,15 +13,15 @@ contract WalletTest is Test {
     }
 
     function test_Wallet_SubmitTransaction() public {
-        address to = address(0x3);
+        address target = address(0x3);
         uint256 value = 1 ether;
         bytes memory data = "";
 
-        wallet.submitTransaction(to, value, data);
+        wallet.submitTransaction(target, value, data);
 
         MockWallet.Transaction memory trx = wallet.getTransaction(0);
 
-        assertEq(to, trx.to);
+        assertEq(target, trx.target);
         assertEq(value, trx.value);
         assertEq(data, trx.data);
         assertEq(false, trx.executed);
@@ -29,22 +29,22 @@ contract WalletTest is Test {
     }
 
     function test_Wallet_ConfirmTransaction() public {
-        address to = address(0x3);
+        address target = address(0x3);
         uint256 value = 1 ether;
         bytes memory data = "";
 
-        wallet.submitTransaction(to, value, data);
+        wallet.submitTransaction(target, value, data);
         wallet.confirmTransaction(0);
 
         assertEq(wallet.getTransaction(0).numConfirmations, 1);
     }
 
     function test_Wallet_RevokeConfirmation() public {
-        address to = address(0x3);
+        address target = address(0x3);
         uint256 value = 1 ether;
         bytes memory data = "";
 
-        wallet.submitTransaction(to, value, data);
+        wallet.submitTransaction(target, value, data);
         wallet.confirmTransaction(0);
         wallet.revokeConfirmation(0);
 
@@ -52,12 +52,12 @@ contract WalletTest is Test {
     }
 
     function test_Wallet_ExecuteTransaction() public {
-        address to = address(0x3);
+        address target = address(0x3);
         uint256 value = 1 ether;
         bytes memory data = "";
         deal(address(wallet), 1 ether);
 
-        wallet.submitTransaction(to, value, data);
+        wallet.submitTransaction(target, value, data);
         wallet.confirmTransaction(0);
         wallet.executeTransaction(0);
 
@@ -67,11 +67,11 @@ contract WalletTest is Test {
     }
 
     function test_Wallet_GetTransactionCount() public {
-        address to = address(0x3);
+        address target = address(0x3);
         uint256 value = 1 ether;
         bytes memory data = "";
 
-        wallet.submitTransaction(to, value, data);
+        wallet.submitTransaction(target, value, data);
 
         uint256 count = wallet.getTransactionCount();
 
@@ -79,11 +79,11 @@ contract WalletTest is Test {
     }
 
     function test_Wallet_GetConfirmation() public {
-        address to = address(0x3);
+        address target = address(0x3);
         uint256 value = 1 ether;
         bytes memory data = "";
 
-        wallet.submitTransaction(to, value, data);
+        wallet.submitTransaction(target, value, data);
         wallet.confirmTransaction(0);
 
         bool isConfirmed = wallet.getConfirmation(0, address(this));

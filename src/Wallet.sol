@@ -10,7 +10,7 @@ abstract contract Wallet {
     event ExecuteTransaction(address indexed leader, uint256 indexed txIndex);
 
     struct Transaction {
-        address to;
+        address target;
         uint256 value;
         bytes data;
         bool executed;
@@ -20,27 +20,34 @@ abstract contract Wallet {
     Transaction[] private transactions;
     mapping(uint256 => mapping(address => bool)) private isConfirmed;
 
+    // Custom Errors
+    error TransactionDoesNotExist();
+    error TransactionAlreadyExecuted();
+    error TransactionAlreadyConfirmed();
+    error TransactionNotConfirmed();
+    error TransactionFailed();
+
     modifier txExists(uint256 _txIndex) {
-        require(_txIndex < transactions.length, "Tx does not exist");
+        if (_txIndex >= transactions.length) revert TransactionDoesNotExist();
         _;
     }
 
     modifier notExecuted(uint256 _txIndex) {
-        require(!transactions[_txIndex].executed, "Tx already executed");
+        if (transactions[_txIndex].executed) revert TransactionAlreadyExecuted();
         _;
     }
 
     modifier notConfirmed(uint256 _txIndex) {
-        require(!isConfirmed[_txIndex][msg.sender], "Tx already confirmed");
+        if (isConfirmed[_txIndex][msg.sender]) revert TransactionAlreadyConfirmed();
         _;
     }
 
-    function _submitTransaction(address _to, uint256 _value, bytes memory _data) internal {
+    function _submitTransaction(address _target, uint256 _value, bytes memory _data) internal {
         uint256 txIndex = transactions.length;
 
-        transactions.push(Transaction({to: _to, value: _value, data: _data, executed: false, numConfirmations: 0}));
+        transactions.push(Transaction({target: _target, value: _value, data: _data, executed: false, numConfirmations: 0}));
 
-        emit SubmitTransaction(msg.sender, txIndex, _to, _value, _data);
+        emit SubmitTransaction(msg.sender, txIndex, _target, _value, _data);
     }
 
     function _confirmTransaction(uint256 _txIndex)
@@ -57,7 +64,7 @@ abstract contract Wallet {
     }
 
     function _revokeConfirmation(uint256 _txIndex) internal txExists(_txIndex) notExecuted(_txIndex) {
-        require(isConfirmed[_txIndex][msg.sender], "Tx not confirmed");
+        if (!isConfirmed[_txIndex][msg.sender]) revert TransactionNotConfirmed();
 
         Transaction storage transaction = transactions[_txIndex];
         transaction.numConfirmations -= 1;
@@ -71,8 +78,8 @@ abstract contract Wallet {
 
         transaction.executed = true;
 
-        (bool success,) = transaction.to.call{value: transaction.value}(transaction.data);
-        require(success, "Tx failed");
+        (bool success,) = transaction.target.call{value: transaction.value}(transaction.data);
+        if (!success) revert TransactionFailed();
 
         emit ExecuteTransaction(msg.sender, _txIndex);
     }
@@ -90,7 +97,7 @@ abstract contract Wallet {
         Transaction storage transaction = transactions[txIndex];
 
         return Transaction({
-            to: transaction.to,
+            target: transaction.target,
             value: transaction.value,
             data: transaction.data,
             executed: transaction.executed,

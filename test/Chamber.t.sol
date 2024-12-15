@@ -111,7 +111,7 @@ contract ChamberTest is Test {
     }
 
     function test_Chamber_SubmitTransaction() public {
-        address to = address(0x3);
+        address target = address(0x3);
         uint256 value = 0;
         bytes memory data = "";
         // Mint an NFT to user1
@@ -125,12 +125,12 @@ contract ChamberTest is Test {
         MockERC20(address(token)).approve(address(chamber), amount);
         chamber.delegate(tokenId, 1);
 
-        chamber.submitTransaction(to, value, data);
+        chamber.submitTransaction(target, value, data);
         vm.stopPrank();
 
         Wallet.Transaction memory trx = chamber.getTransaction(0);
 
-        assertEq(to, trx.to);
+        assertEq(target, trx.target);
         assertEq(value, trx.value);
         assertEq(data, trx.data);
         assertEq(false, trx.executed);
@@ -138,7 +138,7 @@ contract ChamberTest is Test {
     }
 
     function test_Chamber_ConfirmTransaction() public {
-        address to = address(0x3);
+        address target = address(0x3);
         uint256 value = 0;
         bytes memory data = "";
 
@@ -151,7 +151,7 @@ contract ChamberTest is Test {
         MockERC20(address(token)).approve(address(chamber), amount);
         chamber.delegate(tokenId, 1);
 
-        chamber.submitTransaction(to, value, data);
+        chamber.submitTransaction(target, value, data);
         chamber.confirmTransaction(0);
         vm.stopPrank();
 
@@ -159,7 +159,7 @@ contract ChamberTest is Test {
     }
 
     function test_Chamber_RevokeConfirmation() public {
-        address to = address(0x3);
+        address target = address(0x3);
         uint256 value = 0;
         bytes memory data = "";
 
@@ -172,7 +172,7 @@ contract ChamberTest is Test {
         MockERC20(address(token)).approve(address(chamber), amount);
         chamber.delegate(tokenId, 1);
 
-        chamber.submitTransaction(to, value, data);
+        chamber.submitTransaction(target, value, data);
         chamber.confirmTransaction(0);
         chamber.revokeConfirmation(0);
         vm.stopPrank();
@@ -181,7 +181,7 @@ contract ChamberTest is Test {
     }
 
     function test_Chamber_ExecuteTransaction() public {
-        address to = address(0x3);
+        address target = address(0x3);
         uint256 value = 1 ether;
         bytes memory data = "";
 
@@ -202,7 +202,7 @@ contract ChamberTest is Test {
         vm.startPrank(user1);
         MockERC20(address(token)).approve(address(chamber), amount);
         chamber.delegate(tokenId, 1);
-        chamber.submitTransaction(to, value, data);
+        chamber.submitTransaction(target, value, data);
         vm.stopPrank();
 
         vm.startPrank(user2);
@@ -228,7 +228,7 @@ contract ChamberTest is Test {
     }
 
     function test_Chamber_GetTransactionCount() public {
-        address to = address(0x3);
+        address target = address(0x3);
         uint256 value = 0;
         bytes memory data = "";
 
@@ -241,7 +241,7 @@ contract ChamberTest is Test {
         MockERC20(address(token)).approve(address(chamber), amount);
         chamber.delegate(tokenId, 1);
 
-        chamber.submitTransaction(to, value, data);
+        chamber.submitTransaction(target, value, data);
         vm.stopPrank();
 
         uint256 count = chamber.getTransactionCount();
@@ -289,12 +289,12 @@ contract ChamberTest is Test {
         vm.stopPrank();
 
         // Attempt to update seats by a non-leader
-        address to = address(chamber);
+        address target = address(chamber);
         uint256 value = 0;
         bytes memory data = abi.encodeWithSignature("_setSeats(uint256)", 5);
 
         vm.prank(user1);
-        chamber.submitTransaction(to, value, data);
+        chamber.submitTransaction(target, value, data);
 
         vm.prank(user1);
         chamber.updateNumSeats(6);
@@ -492,35 +492,7 @@ contract ChamberTest is Test {
     }
 
     function test_Chamber_GetDirectors() public {
-        // Mint NFTs to users
-        uint256 tokenId1 = 1;
-        uint256 tokenId2 = 2;
-        uint256 tokenId3 = 3;
-        MockERC721(address(nft)).mint(user1, tokenId1);
-        MockERC721(address(nft)).mint(user2, tokenId2);
-        MockERC721(address(nft)).mint(user3, tokenId3);
-
-        // Mint tokens to users
-        uint256 amount = 1000;
-        MockERC20(address(token)).mint(user1, amount);
-        MockERC20(address(token)).mint(user2, amount);
-        MockERC20(address(token)).mint(user3, amount);
-
-        // Approve and delegate tokens
-        vm.startPrank(user1);
-        MockERC20(address(token)).approve(address(chamber), amount);
-        chamber.delegate(tokenId1, amount);
-        vm.stopPrank();
-
-        vm.startPrank(user2);
-        MockERC20(address(token)).approve(address(chamber), amount);
-        chamber.delegate(tokenId2, amount);
-        vm.stopPrank();
-
-        vm.startPrank(user3);
-        MockERC20(address(token)).approve(address(chamber), amount);
-        chamber.delegate(tokenId3, amount);
-        vm.stopPrank();
+        addDirectors();
 
         // Get directors
         address[] memory directors = chamber.getDirectors();
@@ -539,7 +511,7 @@ contract ChamberTest is Test {
 
     function test_Chamber_ExecuteTransaction_NotDirector() public {
         vm.startPrank(address(420));
-        vm.expectRevert("Caller is not a director");
+        vm.expectRevert(Chamber.CallerIsNotADirector.selector);
         chamber.executeTransaction(0);
         vm.stopPrank();
     }
@@ -581,4 +553,120 @@ contract ChamberTest is Test {
         assertEq(tokenIds[2], tokenId1);
         assertEq(amounts[2], amount1);
     }
+
+    function test_Chamber_ExecuteTransaction_ERC20() public {
+        address target = address(token);
+
+        uint256 value = 100 ether;
+        bytes memory data = abi.encodeWithSignature("transfer(address,uint256)", user1, value);
+
+        addDirectors();
+
+        // Mint tokens to the wallet
+        MockERC20(address(token)).mint(address(chamber), value);
+
+        // Submit and confirm the transaction
+        vm.startPrank(user1);
+        chamber.submitTransaction(target, 0, data);
+        chamber.confirmTransaction(0);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        chamber.confirmTransaction(0);
+        vm.stopPrank();
+
+        vm.startPrank(user3);
+        chamber.confirmTransaction(0);
+        vm.stopPrank();
+
+        // Execute the transaction
+        vm.startPrank(user1);
+        chamber.executeTransaction(0);
+        vm.stopPrank();
+
+        // Check the transaction execution
+        assertEq(MockERC20(address(token)).balanceOf(user1), value);
+    }
+
+    function addDirectors() public {
+        // Mint NFTs to users
+        uint256 tokenId1 = 1;
+        uint256 tokenId2 = 2;
+        uint256 tokenId3 = 3;
+        MockERC721(address(nft)).mint(user1, tokenId1);
+        MockERC721(address(nft)).mint(user2, tokenId2);
+        MockERC721(address(nft)).mint(user3, tokenId3);
+
+        // Mint tokens to users
+        uint256 amount = 1000;
+        MockERC20(address(token)).mint(user1, amount);
+        MockERC20(address(token)).mint(user2, amount);
+        MockERC20(address(token)).mint(user3, amount);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId1, amount);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId2, amount);
+        vm.stopPrank();
+
+        vm.startPrank(user3);
+        MockERC20(address(token)).approve(address(chamber), amount);
+        chamber.delegate(tokenId3, amount);
+        vm.stopPrank();
+    }
+
+    function test_Chamber_ExecuteBatchTransactions() public {
+        address target1 = address(0x3);
+        address target2 = address(0x4);
+        uint256 value1 = 1 ether;
+        uint256 value2 = 2 ether;
+        bytes memory data1 = "";
+        bytes memory data2 = "";
+        deal(address(chamber), 3 ether);
+
+        address[] memory targets = new address[](2);
+        targets[0] = target1;
+        targets[1] = target2;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = value1;
+        values[1] = value2;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = data1;
+        data[1] = data2;
+
+        addDirectors();
+
+        vm.startPrank(user1);
+        chamber.submitBatchTransactions(targets, values, data);
+        uint256[] memory batch = new uint256[](2);
+        batch[0] = 0;
+        batch[1] = 1;
+        chamber.confirmBatchTransactions(batch);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        chamber.confirmBatchTransactions(batch);
+        vm.stopPrank();
+
+        vm.startPrank(user3);
+        chamber.confirmBatchTransactions(batch);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        chamber.executeBatchTransactions(batch);
+        vm.stopPrank();
+
+        assertEq(chamber.getTransaction(0).executed, true);
+        assertEq(chamber.getTransaction(1).executed, true);
+        assertEq(address(0x3).balance, 1 ether);
+        assertEq(address(0x4).balance, 2 ether);
+        assertEq(address(chamber).balance, 0);
+    }        
 }
