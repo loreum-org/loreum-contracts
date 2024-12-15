@@ -375,7 +375,6 @@ contract ChamberTest is Test {
         vm.startPrank(user1);
         MockERC20(address(token)).approve(address(chamber), amount);
         chamber.delegate(tokenId1, amount);
-
         // Attempt to undelegate with zero amount
         vm.expectRevert();
         chamber.undelegate(tokenId1, 0);
@@ -668,5 +667,5 @@ contract ChamberTest is Test {
         assertEq(address(0x3).balance, 1 ether);
         assertEq(address(0x4).balance, 2 ether);
         assertEq(address(chamber).balance, 0);
-    }        
+    }     
 }
