@@ -45,7 +45,9 @@ abstract contract Wallet {
     function _submitTransaction(address _target, uint256 _value, bytes memory _data) internal {
         uint256 txIndex = transactions.length;
 
-        transactions.push(Transaction({target: _target, value: _value, data: _data, executed: false, numConfirmations: 0}));
+        transactions.push(
+            Transaction({target: _target, value: _value, data: _data, executed: false, numConfirmations: 0})
+        );
 
         emit SubmitTransaction(msg.sender, txIndex, _target, _value, _data);
     }

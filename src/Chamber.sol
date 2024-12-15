@@ -235,11 +235,10 @@ contract Chamber is Board, Wallet {
     /// @param targets The array of addresses to send the transactions to
     /// @param values The array of amounts of Ether to send
     /// @param data The array of data to include in each transaction
-    function submitBatchTransactions(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory data
-    ) public onlyDirector {
+    function submitBatchTransactions(address[] memory targets, uint256[] memory values, bytes[] memory data)
+        public
+        onlyDirector
+    {
         if (targets.length != values.length || values.length != data.length) revert ArrayLengthsMustMatch();
 
         for (uint256 i = 0; i < targets.length; i++) {
