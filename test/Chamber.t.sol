@@ -342,7 +342,7 @@ contract ChamberTest is Test {
         vm.stopPrank();
     }
 
-        function test_Chamber_DelegateFunction_BadTransfer() public {
+    function test_Chamber_DelegateFunction_BadTransfer() public {
         uint256 amount = 1000;
         uint256 tokenId1 = 1;
 
@@ -375,7 +375,7 @@ contract ChamberTest is Test {
         vm.startPrank(user1);
         MockERC20(address(token)).approve(address(chamber), amount);
         chamber.delegate(tokenId1, amount);
-        
+
         // Attempt to undelegate with zero amount
         vm.expectRevert();
         chamber.undelegate(tokenId1, 0);
@@ -486,7 +486,7 @@ contract ChamberTest is Test {
         vm.stopPrank();
     }
 
-    function test_Chamber_GetSeats() public view{
+    function test_Chamber_GetSeats() public view {
         uint256 _seats = chamber.getSeats();
         assertEq(_seats, 5);
     }
@@ -542,5 +542,43 @@ contract ChamberTest is Test {
         vm.expectRevert("Caller is not a director");
         chamber.executeTransaction(0);
         vm.stopPrank();
+    }
+
+    function test_Chamber_getUserDelegations() public {
+        uint256 tokenId1 = 1;
+        uint256 tokenId2 = 2;
+        uint256 tokenId3 = 3;
+
+        // Mint tokens to users
+        uint256 amount1 = 100;
+        uint256 amount2 = 200;
+        uint256 amount3 = 300;
+        MockERC20(address(token)).mint(user1, amount1);
+        MockERC20(address(token)).mint(user1, amount2);
+        MockERC20(address(token)).mint(user1, amount3);
+
+        // Approve and delegate tokens
+        vm.startPrank(user1);
+        token.approve(address(chamber), amount1);
+        chamber.delegate(tokenId1, amount1);
+        token.approve(address(chamber), amount2);
+        chamber.delegate(tokenId2, amount2);
+        token.approve(address(chamber), amount3);
+        chamber.delegate(tokenId3, amount3);
+        vm.stopPrank();
+
+        // Get user delegations
+        (uint256[] memory tokenIds, uint256[] memory amounts) = chamber.getUserDelegations(user1);
+
+        // Check user delegations
+        assertEq(tokenIds.length, 3);
+        assertEq(amounts.length, 3);
+
+        assertEq(tokenIds[0], tokenId3);
+        assertEq(amounts[0], amount3);
+        assertEq(tokenIds[1], tokenId2);
+        assertEq(amounts[1], amount2);
+        assertEq(tokenIds[2], tokenId1);
+        assertEq(amounts[2], amount1);
     }
 }

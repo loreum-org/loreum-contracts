@@ -113,7 +113,6 @@ contract Chamber is Board, Wallet {
         return _getNode(tokenId);
     }
 
-
     /// @notice Retrieves the top tokenIds and their amounts
     /// @param count The number of top tokenIds to retrieve
     /// @return An array of top tokenIds and their corresponding amounts
@@ -152,6 +151,35 @@ contract Chamber is Board, Wallet {
         }
 
         return topOwners;
+    }
+
+    /// @notice Returns the list of tokenIds to which the user has delegated tokens and the corresponding amounts
+    /// @param user The address of the user
+    /// @return tokenIds The list of tokenIds
+    /// @return amounts The list of amounts delegated to each tokenId
+    function getUserDelegations(address user)
+        external
+        view
+        returns (uint256[] memory tokenIds, uint256[] memory amounts)
+    {
+        uint256 count = 0;
+        uint256[] memory tempTokenIds = new uint256[](size);
+        uint256[] memory tempAmounts = new uint256[](size);
+
+        for (uint256 tokenId = head; tokenId != 0; tokenId = nodes[tokenId].next) {
+            if (_userDelegations[user][tokenId] > 0) {
+                tempTokenIds[count] = tokenId;
+                tempAmounts[count] = _userDelegations[user][tokenId];
+                count++;
+            }
+        }
+
+        tokenIds = new uint256[](count);
+        amounts = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            tokenIds[i] = tempTokenIds[i];
+            amounts[i] = tempAmounts[i];
+        }
     }
 
     /// @notice Retrieves the list of addresses that have requested a seat update
