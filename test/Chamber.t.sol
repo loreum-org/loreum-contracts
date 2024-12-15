@@ -667,5 +667,5 @@ contract ChamberTest is Test {
         assertEq(address(0x3).balance, 1 ether);
         assertEq(address(0x4).balance, 2 ether);
         assertEq(address(chamber).balance, 0);
-    }        
+    }     
 }
