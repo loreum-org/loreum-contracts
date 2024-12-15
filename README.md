@@ -40,7 +40,7 @@ Chambers are meant to replicate the power dynamics of a modern company. The Cham
 Chambers use NFTs as membership tokens. Token delegation is done by allocating to an NFT tokenId, and a leaderboard of delegation balances is used to determine which NFTs are the Directors. NFTs are used to distinguish community members from sybil EOAs and function as  credentials to participate in the governance process.
 
 
-Each Chamber is created with a designated number of seats and a quorum. If a member of the community removes their delegatation to a tokenId, that Director may lose their seal and  ability sign transactions. This creates a representative board of decision makers based on revocable authority by delegation.
+Each Chamber is created with a designated number of seats and a quorum. If a member of the community removes their delegatation to a tokenId, that Director may lose their seat on the board and  ability to manage transactions. This creates a representative board of decision makers based on revocable authority by delegation.
 
 ### Setup
 
