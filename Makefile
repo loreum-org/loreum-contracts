@@ -19,9 +19,9 @@ deploy :; forge script script/${contract}.s.sol:Deploy${contract} \
 	--broadcast \
 	--verify
 
-coverage :; forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage
+cover :; forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage
 
-show-coverage :; npx http-server ./coverage
+show  :; npx http-server ./coverage
 
 clean :; rm -rf out coverage lcov.info cache artifacts
 

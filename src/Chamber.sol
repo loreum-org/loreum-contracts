@@ -41,6 +41,14 @@ contract Chamber is Board, Wallet {
     /// @param numOfSeats The new number of seats
     event UpdateSeats(bytes[] signedData, uint256 numOfSeats);
 
+    /// Custom Errors
+    error AmountMustBeGreaterThanZero();
+    error InsufficientDelegatedAmount();
+    error TransferFailed();
+    error ArrayLengthsMustMatch();
+    error NotEnoughConfirmations();
+    error CallerIsNotADirector();
+
     /// @notice Initializes the Chamber contract with the given ERC20 and ERC721 tokens and sets the number of seats
     /// @param erc20Token The address of the ERC20 token
     /// @param erc721Token The address of the ERC721 token
@@ -55,7 +63,7 @@ contract Chamber is Board, Wallet {
     /// @param tokenId The tokenId to which tokens are delegated
     /// @param amount The amount of tokens to delegate
     function delegate(uint256 tokenId, uint256 amount) external {
-        require(amount > 0, "Amount must be greater than 0");
+        if (amount == 0) revert AmountMustBeGreaterThanZero();
 
         // Update user delegation amount
         _userDelegations[msg.sender][tokenId] += amount;
@@ -71,7 +79,7 @@ contract Chamber is Board, Wallet {
         }
 
         // Transfer tokens from user
-        require(token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+        if (!token.transferFrom(msg.sender, address(this), amount)) revert TransferFailed();
 
         // Emit Delegate event
         emit Delegate(msg.sender, tokenId, amount);
@@ -81,8 +89,8 @@ contract Chamber is Board, Wallet {
     /// @param tokenId The tokenId from which tokens are undelegated
     /// @param amount The amount of tokens to undelegate
     function undelegate(uint256 tokenId, uint256 amount) external {
-        require(amount > 0, "Amount must be greater than 0");
-        require(_userDelegations[msg.sender][tokenId] >= amount, "Insufficient delegated amount");
+        if (amount == 0) revert AmountMustBeGreaterThanZero();
+        if (_userDelegations[msg.sender][tokenId] < amount) revert InsufficientDelegatedAmount();
 
         // Update user delegation amount
         _userDelegations[msg.sender][tokenId] -= amount;
@@ -99,7 +107,7 @@ contract Chamber is Board, Wallet {
         }
 
         // Transfer tokens back to user
-        require(token.transfer(msg.sender, amount), "Transfer failed");
+        if (!token.transfer(msg.sender, amount)) revert TransferFailed();
 
         emit Undelegate(msg.sender, tokenId, amount);
     }
@@ -112,7 +120,6 @@ contract Chamber is Board, Wallet {
     function getMember(uint256 tokenId) public view returns (Node memory) {
         return _getNode(tokenId);
     }
-
 
     /// @notice Retrieves the top tokenIds and their amounts
     /// @param count The number of top tokenIds to retrieve
@@ -154,6 +161,35 @@ contract Chamber is Board, Wallet {
         return topOwners;
     }
 
+    /// @notice Returns the list of tokenIds to which the user has delegated tokens and the corresponding amounts
+    /// @param user The address of the user
+    /// @return tokenIds The list of tokenIds
+    /// @return amounts The list of amounts delegated to each tokenId
+    function getUserDelegations(address user)
+        external
+        view
+        returns (uint256[] memory tokenIds, uint256[] memory amounts)
+    {
+        uint256 count = 0;
+        uint256[] memory tempTokenIds = new uint256[](size);
+        uint256[] memory tempAmounts = new uint256[](size);
+
+        for (uint256 tokenId = head; tokenId != 0; tokenId = nodes[tokenId].next) {
+            if (_userDelegations[user][tokenId] > 0) {
+                tempTokenIds[count] = tokenId;
+                tempAmounts[count] = _userDelegations[user][tokenId];
+                count++;
+            }
+        }
+
+        tokenIds = new uint256[](count);
+        amounts = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            tokenIds[i] = tempTokenIds[i];
+            amounts[i] = tempAmounts[i];
+        }
+    }
+
     /// @notice Retrieves the list of addresses that have requested a seat update
     /// @return An array of addresses that have requested a seat update
     function getSeatUpdate() public view returns (address[] memory) {
@@ -185,10 +221,7 @@ contract Chamber is Board, Wallet {
     /// @notice Executes a transaction if it has enough confirmations
     /// @param transactionId The ID of the transaction to execute
     function executeTransaction(uint256 transactionId) public onlyDirector {
-        require(
-            getTransaction(transactionId).numConfirmations >= getQuorum(),
-            "Cannot execute transaction: not enough confirmations"
-        );
+        if (getTransaction(transactionId).numConfirmations < getQuorum()) revert NotEnoughConfirmations();
         _executeTransaction(transactionId);
     }
 
@@ -196,6 +229,40 @@ contract Chamber is Board, Wallet {
     /// @param transactionId The ID of the transaction to revoke confirmation for
     function revokeConfirmation(uint256 transactionId) public onlyDirector {
         _revokeConfirmation(transactionId);
+    }
+
+    /// @notice Submits multiple transactions for approval in a single call
+    /// @param targets The array of addresses to send the transactions to
+    /// @param values The array of amounts of Ether to send
+    /// @param data The array of data to include in each transaction
+    function submitBatchTransactions(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory data
+    ) public onlyDirector {
+        if (targets.length != values.length || values.length != data.length) revert ArrayLengthsMustMatch();
+
+        for (uint256 i = 0; i < targets.length; i++) {
+            _submitTransaction(targets[i], values[i], data[i]);
+        }
+    }
+
+    /// @notice Confirms multiple transactions in a single call
+    /// @param transactionIds The array of transaction IDs to confirm
+    function confirmBatchTransactions(uint256[] memory transactionIds) public onlyDirector {
+        for (uint256 i = 0; i < transactionIds.length; i++) {
+            _confirmTransaction(transactionIds[i]);
+        }
+    }
+
+    /// @notice Executes multiple transactions in a single call if they have enough confirmations
+    /// @param transactionIds The array of transaction IDs to execute
+    function executeBatchTransactions(uint256[] memory transactionIds) public onlyDirector {
+        for (uint256 i = 0; i < transactionIds.length; i++) {
+            uint256 transactionId = transactionIds[i];
+            if (getTransaction(transactionId).numConfirmations < getQuorum()) revert NotEnoughConfirmations();
+            _executeTransaction(transactionId);
+        }
     }
 
     /// @notice Fallback function to receive Ether
@@ -214,6 +281,6 @@ contract Chamber is Board, Wallet {
             }
         }
 
-        revert("Caller is not a director");
+        revert CallerIsNotADirector();
     }
 }
