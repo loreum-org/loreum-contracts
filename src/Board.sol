@@ -1,5 +1,5 @@
- // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
 
 abstract contract Board {
     event SetSeats(uint256 numOfSeats);
