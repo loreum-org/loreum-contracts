@@ -32,57 +32,47 @@ abstract contract Board {
         return nodes[tokenId];
     }
 
-function _insert(uint256 tokenId, uint256 amount) internal {
-    uint256 _head = head;
-    uint256 _tail = tail;
-    
-    if (_head == 0) {
-        // First node
-        nodes[tokenId] = Node({
-            tokenId: tokenId,
-            amount: amount,
-            next: 0,
-            prev: 0
-        });
-        head = tokenId;
-        tail = tokenId;
-    } else {
-        uint256 current = _head;
-        uint256 previous = 0;
-        
-        while (current != 0) {
-            uint256 currentAmount = nodes[current].amount;
-            if (amount > currentAmount) break;
-            previous = current;
-            current = nodes[current].next;
-        }
-        
-        nodes[tokenId] = Node({
-            tokenId: tokenId,
-            amount: amount,
-            next: current,
-            prev: previous
-        });
-        
-        if (current == 0) {
-            // Insert at tail
-            nodes[_tail].next = tokenId;
+    function _insert(uint256 tokenId, uint256 amount) internal {
+        uint256 _head = head;
+        uint256 _tail = tail;
+
+        if (_head == 0) {
+            // First node
+            nodes[tokenId] = Node({tokenId: tokenId, amount: amount, next: 0, prev: 0});
+            head = tokenId;
             tail = tokenId;
         } else {
-            // Insert before current node
-            if (previous != 0) {
-                nodes[previous].next = tokenId;
-            } else {
-                head = tokenId;
+            uint256 current = _head;
+            uint256 previous = 0;
+
+            while (current != 0) {
+                uint256 currentAmount = nodes[current].amount;
+                if (amount > currentAmount) break;
+                previous = current;
+                current = nodes[current].next;
             }
-            nodes[current].prev = tokenId;
+
+            nodes[tokenId] = Node({tokenId: tokenId, amount: amount, next: current, prev: previous});
+
+            if (current == 0) {
+                // Insert at tail
+                nodes[_tail].next = tokenId;
+                tail = tokenId;
+            } else {
+                // Insert before current node
+                if (previous != 0) {
+                    nodes[previous].next = tokenId;
+                } else {
+                    head = tokenId;
+                }
+                nodes[current].prev = tokenId;
+            }
+        }
+
+        unchecked {
+            size++;
         }
     }
-    
-    unchecked {
-        size++;
-    }
-}
 
     function _remove(uint256 tokenId) internal {
         Node storage node = nodes[tokenId];
