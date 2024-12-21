@@ -155,6 +155,7 @@ abstract contract Board {
         }
     }
 
+
     function _remove(uint256 tokenId) internal {
         Node storage node = nodes[tokenId];
         uint256 prev = node.prev;
