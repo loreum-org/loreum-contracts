@@ -67,12 +67,14 @@ abstract contract Board {
                 }
                 nodes[current].prev = tokenId;
             }
+            nodes[current].prev = tokenId;
         }
 
         unchecked {
             size++;
         }
     }
+}
 
     function _remove(uint256 tokenId) internal {
         Node storage node = nodes[tokenId];
