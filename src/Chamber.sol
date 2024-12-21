@@ -205,11 +205,11 @@ contract Chamber is Board, Wallet {
     /// WALLET ///
 
     /// @notice Submits a new transaction for approval
-    /// @param to The address to send the transaction to
+    /// @param target The address to send the transaction to
     /// @param value The amount of Ether to send
     /// @param data The data to include in the transaction
-    function submitTransaction(address to, uint256 value, bytes memory data) public onlyDirector {
-        _submitTransaction(to, value, data);
+    function submitTransaction(address target, uint256 value, bytes memory data) public onlyDirector {
+        _submitTransaction(target, value, data);
     }
 
     /// @notice Confirms a transaction
