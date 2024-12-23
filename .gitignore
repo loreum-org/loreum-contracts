@@ -19,3 +19,6 @@ cache
 
 # Others 
 #lib
+docs/whitepaper.aux
+docs/whitepaper.log
+docs/whitepaper.out
