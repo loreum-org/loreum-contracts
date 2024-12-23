@@ -509,9 +509,14 @@ contract ChamberTest is Test {
     }
 
     function test_Chamber_ExecuteTransaction_NotDirector() public {
-        vm.startPrank(address(420));
+        // Submit a transaction first
+        address target = address(0x3);
+        uint256 value = 0;
+        bytes memory data = "";
+
+        vm.startPrank(user1);
         vm.expectRevert(Chamber.CallerIsNotADirector.selector);
-        chamber.executeTransaction(0);
+        chamber.submitTransaction(target, value, data);
         vm.stopPrank();
     }
 
@@ -539,7 +544,7 @@ contract ChamberTest is Test {
         vm.stopPrank();
 
         // Get user delegations
-        (uint256[] memory tokenIds, uint256[] memory amounts) = chamber.getUserDelegations(user1);
+        (uint256[] memory tokenIds, uint256[] memory amounts) = chamber.getDelegations(user1);
 
         // Check user delegations
         assertEq(tokenIds.length, 3);
