@@ -22,3 +22,7 @@ cache
 docs/whitepaper.aux
 docs/whitepaper.log
 docs/whitepaper.out
+
+# docs
+node_modules
+.docusaurus
