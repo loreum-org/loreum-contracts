@@ -102,39 +102,36 @@ abstract contract Board {
 
         node.amount -= amount;
 
-            if (current == 0) {
-                // Insert at tail
-                nodes[_tail].next = tokenId;
-                tail = tokenId;
-            } else {
-                // Insert before current node
-                if (previous != 0) {
-                    nodes[previous].next = tokenId;
-                } else {
-                    head = tokenId;
-                }
-                nodes[current].prev = tokenId;
-            }
-
-            nodes[tokenId] = Node({tokenId: tokenId, amount: amount, next: current, prev: previous});
-
-            if (current == 0) {
-                // Insert at tail
-                nodes[_tail].next = tokenId;
-                tail = tokenId;
-            } else {
-                // Insert before current node
-                if (previous != 0) {
-                    nodes[previous].next = tokenId;
-                } else {
-                    head = tokenId;
-                }
-                nodes[current].prev = tokenId;
-            }
+        if (node.amount == 0) {
+            _remove(tokenId);
+        } else {
+            _reposition(tokenId);
         }
+        emit Undelegate(msg.sender, tokenId, amount);
+    }
 
-        unchecked {
-            size++;
+    function _insert(uint256 tokenId, uint256 amount) internal {
+        if (head == 0) {
+            _initializeFirstNode(tokenId, amount);
+        } else {
+            _insertNodeInOrder(tokenId, amount);
+        }
+        _incrementSize();
+    }
+
+    function _initializeFirstNode(uint256 tokenId, uint256 amount) private {
+        nodes[tokenId] = Node({tokenId: tokenId, amount: amount, next: 0, prev: 0});
+        head = tokenId;
+        tail = tokenId;
+    }
+
+    function _insertNodeInOrder(uint256 tokenId, uint256 amount) private {
+        uint256 current = head;
+        uint256 previous = 0;
+
+        while (current != 0 && amount <= nodes[current].amount) {
+            previous = current;
+            current = nodes[current].next;
         }
 
         nodes[tokenId] = Node({tokenId: tokenId, amount: amount, next: current, prev: previous});
@@ -157,7 +154,6 @@ abstract contract Board {
             size++;
         }
     }
-}
 
     function _remove(uint256 tokenId) internal {
         Node storage node = nodes[tokenId];
