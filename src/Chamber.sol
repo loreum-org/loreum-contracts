@@ -7,10 +7,11 @@ import {Board} from "src/Board.sol";
 import {Wallet} from "src/Wallet.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {IERC721} from "lib/openzeppelin-contracts/contracts/interfaces/IERC721.sol";
+import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 
 /// @title Chamber Contract
 /// @notice This contract manages a multisig wallet with governance and delegation features using ERC20 and ERC721 tokens.
-contract Chamber is Board, Wallet {
+contract Chamber is Board, Wallet, ReentrancyGuard {
     /// @notice ERC20 governance token
     IERC20 public token;
     /// @notice ERC721 membership token
@@ -24,36 +25,24 @@ contract Chamber is Board, Wallet {
     /// @param amount The amount of Ether received
     event Received(address indexed sender, uint256 amount);
 
-    /// @notice Emitted when a user delegates tokens to a tokenId
-    /// @param sender The address of the user delegating tokens
-    /// @param tokenId The tokenId to which tokens are delegated
-    /// @param amount The amount of tokens delegated
-    event Delegate(address indexed sender, uint256 tokenId, uint256 amount);
-
-    /// @notice Emitted when a user undelegates tokens from a tokenId
-    /// @param sender The address of the user undelegating tokens
-    /// @param tokenId The tokenId from which tokens are undelegated
-    /// @param amount The amount of tokens undelegated
-    event Undelegate(address indexed sender, uint256 tokenId, uint256 amount);
-
-    /// @notice Emitted when the number of seats is updated
-    /// @param signedData The signed data for the update
-    /// @param numOfSeats The new number of seats
-    event UpdateSeats(bytes[] signedData, uint256 numOfSeats);
-
     /// Custom Errors
-    error AmountMustBeGreaterThanZero();
     error InsufficientDelegatedAmount();
     error TransferFailed();
     error ArrayLengthsMustMatch();
     error NotEnoughConfirmations();
     error CallerIsNotADirector();
+    error ZeroAddress();
+    error ZeroAmount();
+    error ArrayIndexOutOfBounds();
 
     /// @notice Initializes the Chamber contract with the given ERC20 and ERC721 tokens and sets the number of seats
     /// @param erc20Token The address of the ERC20 token
     /// @param erc721Token The address of the ERC721 token
     /// @param seats The initial number of seats
     constructor(address erc20Token, address erc721Token, uint256 seats) {
+        if (erc20Token == address(0) || erc721Token == address(0)) {
+            revert ZeroAddress();
+        }
         token = IERC20(erc20Token);
         nft = IERC721(erc721Token);
         _setSeats(seats);
@@ -62,54 +51,41 @@ contract Chamber is Board, Wallet {
     /// @notice Delegates a specified amount of tokens to a tokenId
     /// @param tokenId The tokenId to which tokens are delegated
     /// @param amount The amount of tokens to delegate
-    function delegate(uint256 tokenId, uint256 amount) external {
-        if (amount == 0) revert AmountMustBeGreaterThanZero();
+    function delegate(uint256 tokenId, uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+
+        // Cache the current delegation amount to minimize storage reads
+        uint256 currentDelegation = _userDelegations[msg.sender][tokenId];
+        uint256 newDelegation = currentDelegation + amount;
 
         // Update user delegation amount
-        _userDelegations[msg.sender][tokenId] += amount;
+        _userDelegations[msg.sender][tokenId] = newDelegation;
 
-        // Update or insert node
-        if (nodes[tokenId].tokenId == tokenId) {
-            // Node exists, update amount and reposition
-            nodes[tokenId].amount += amount;
-            _reposition(tokenId);
-        } else {
-            // Create new node
-            _insert(tokenId, amount);
-        }
+        _delegate(tokenId, amount);
 
         // Transfer tokens from user
         if (!token.transferFrom(msg.sender, address(this), amount)) revert TransferFailed();
-
-        // Emit Delegate event
-        emit Delegate(msg.sender, tokenId, amount);
     }
 
     /// @notice Undelegates a specified amount of tokens from a tokenId
     /// @param tokenId The tokenId from which tokens are undelegated
     /// @param amount The amount of tokens to undelegate
-    function undelegate(uint256 tokenId, uint256 amount) external {
-        if (amount == 0) revert AmountMustBeGreaterThanZero();
-        if (_userDelegations[msg.sender][tokenId] < amount) revert InsufficientDelegatedAmount();
+    function undelegate(uint256 tokenId, uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+
+        // Cache the current delegation amount to minimize storage reads
+        uint256 currentDelegation = _userDelegations[msg.sender][tokenId];
+        if (currentDelegation < amount) revert InsufficientDelegatedAmount();
+
+        uint256 newDelegation = currentDelegation - amount;
 
         // Update user delegation amount
-        _userDelegations[msg.sender][tokenId] -= amount;
+        _userDelegations[msg.sender][tokenId] = newDelegation;
 
-        // Update node
-        nodes[tokenId].amount -= amount;
-
-        if (nodes[tokenId].amount == 0) {
-            // Remove node if amount is 0
-            _remove(tokenId);
-        } else {
-            // Reposition node based on new amount
-            _reposition(tokenId);
-        }
+        _undelegate(tokenId, amount);
 
         // Transfer tokens back to user
         if (!token.transfer(msg.sender, amount)) revert TransferFailed();
-
-        emit Undelegate(msg.sender, tokenId, amount);
     }
 
     /// BOARD ///
@@ -155,7 +131,11 @@ contract Chamber is Board, Wallet {
         address[] memory topOwners = new address[](topTokenIds.length);
 
         for (uint256 i = 0; i < topTokenIds.length; i++) {
-            topOwners[i] = nft.ownerOf(topTokenIds[i]);
+            try nft.ownerOf(topTokenIds[i]) returns (address owner) {
+                topOwners[i] = owner;
+            } catch {
+                topOwners[i] = address(0); // Default to address(0) if the call fails
+            }
         }
 
         return topOwners;
@@ -165,28 +145,32 @@ contract Chamber is Board, Wallet {
     /// @param user The address of the user
     /// @return tokenIds The list of tokenIds
     /// @return amounts The list of amounts delegated to each tokenId
-    function getUserDelegations(address user)
-        external
-        view
-        returns (uint256[] memory tokenIds, uint256[] memory amounts)
-    {
+    function getDelegations(address user) external view returns (uint256[] memory tokenIds, uint256[] memory amounts) {
         uint256 count = 0;
-        uint256[] memory tempTokenIds = new uint256[](size);
-        uint256[] memory tempAmounts = new uint256[](size);
+        uint256 tokenId = head;
 
-        for (uint256 tokenId = head; tokenId != 0; tokenId = nodes[tokenId].next) {
+        // First pass: count the number of delegations
+        while (tokenId != 0) {
             if (_userDelegations[user][tokenId] > 0) {
-                tempTokenIds[count] = tokenId;
-                tempAmounts[count] = _userDelegations[user][tokenId];
                 count++;
             }
+            tokenId = nodes[tokenId].next;
         }
 
+        // Allocate arrays with the correct size
         tokenIds = new uint256[](count);
         amounts = new uint256[](count);
-        for (uint256 i = 0; i < count; i++) {
-            tokenIds[i] = tempTokenIds[i];
-            amounts[i] = tempAmounts[i];
+
+        // Second pass: populate the arrays
+        count = 0;
+        tokenId = head;
+        while (tokenId != 0) {
+            if (_userDelegations[user][tokenId] > 0) {
+                tokenIds[count] = tokenId;
+                amounts[count] = _userDelegations[user][tokenId];
+                count++;
+            }
+            tokenId = nodes[tokenId].next;
         }
     }
 
@@ -271,12 +255,21 @@ contract Chamber is Board, Wallet {
 
     /// @notice Modifier to restrict access to only directors
     modifier onlyDirector() {
-        (uint256[] memory topTokenIds,) = getTop(_getSeats());
+        uint256 seats = _getSeats();
+        uint256 current = head;
 
-        for (uint256 i = 0; i < topTokenIds.length; i++) {
-            if (nft.ownerOf(topTokenIds[i]) == msg.sender) {
+        // Iterate through linked list directly rather than creating array
+        for (uint256 i; i < seats;) {
+            if (current == 0) break; // Exit if we reach end of list
+
+            if (nft.ownerOf(current) == msg.sender) {
                 _;
                 return;
+            }
+
+            current = nodes[current].next;
+            unchecked {
+                ++i;
             }
         }
 
