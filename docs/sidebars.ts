@@ -16,7 +16,7 @@ const sidebars: SidebarsConfig = {
   docs: [
     {
       type: 'doc',
-      id: 'intro',
+      id: 'index',
       label: 'Introduction',
     },
     {

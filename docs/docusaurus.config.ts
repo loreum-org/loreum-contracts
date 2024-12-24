@@ -5,36 +5,25 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-<<<<<<< HEAD
-<<<<<<< HEAD
+
   title: 'Docs',
-=======
-  title: 'Loreum',
->>>>>>> 29d5662 (Change name)
-=======
-  title: 'Docs',
->>>>>>> 77c2615 (Update docs)
   tagline: 'AI-Powered Decentralized Governance',
-<<<<<<< HEAD
-<<<<<<< HEAD
   favicon: 'https://cdn.loreum.org/logos/black.png',
-=======
-  favicon: 'https://cdn.loreum.org/logos/black.svg',
->>>>>>> 61b19f9 (Update docs site)
-=======
-  favicon: 'https://cdn.loreum.org/logos/black.png',
->>>>>>> 68ba331 (update favicon)
 
   // Set the production url of your site here
   url: 'https://docs.loreum.org',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  baseUrl: '/chamber/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'loreum-org', // Usually your GitHub org/user name.
   projectName: 'chamber', // Usually your repo name.
+  deploymentBranch: 'gh-pages',
+
+  // Explicitly set trailing slash behavior
+  trailingSlash: true,
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -60,7 +49,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           routeBasePath: '/',
-          editUrl: 'https://github.com/loreum-org/chamber/tree/main/docs/site/',
+          editUrl: 'https://github.com/loreum-org/chamber/tree/main/docs/',
         },
         blog: false,
         theme: {
@@ -102,7 +91,7 @@ const config: Config = {
           items: [
             {
               label: 'Introduction',
-              to: '/intro',
+              to: '/',
             },
           ],
         },
