@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "deploy": "GIT_USER=<GITHUB_USERNAME> USE_SSH=true npm run deploy"
+  }
+} 
