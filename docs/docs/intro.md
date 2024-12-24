@@ -92,4 +92,3 @@ MIT License
 - [Understanding the Architecture](./architecture/overview.md)
 - [Smart Contracts Overview](./contracts/overview.md)
 - [User Guides](./guides/getting-started.md)
-- [API Reference](./api/overview.md)
