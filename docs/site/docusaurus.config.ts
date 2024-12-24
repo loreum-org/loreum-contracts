@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'Loreum Documentation',
+  title: 'Loreum',
   tagline: 'AI-Powered Decentralized Governance',
   favicon: 'https://cdn.loreum.org/logos/black.png',
 
