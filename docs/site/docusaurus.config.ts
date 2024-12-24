@@ -7,7 +7,11 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'Docs',
   tagline: 'AI-Powered Decentralized Governance',
+<<<<<<< HEAD
   favicon: 'https://cdn.loreum.org/logos/black.png',
+=======
+  favicon: 'https://cdn.loreum.org/logos/black.svg',
+>>>>>>> 61b19f9 (Update docs site)
 
   // Set the production url of your site here
   url: 'https://docs.loreum.org',
