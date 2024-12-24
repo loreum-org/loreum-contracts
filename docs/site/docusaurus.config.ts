@@ -8,10 +8,14 @@ const config: Config = {
   title: 'Docs',
   tagline: 'AI-Powered Decentralized Governance',
 <<<<<<< HEAD
+<<<<<<< HEAD
   favicon: 'https://cdn.loreum.org/logos/black.png',
 =======
   favicon: 'https://cdn.loreum.org/logos/black.svg',
 >>>>>>> 61b19f9 (Update docs site)
+=======
+  favicon: 'https://cdn.loreum.org/logos/black.png',
+>>>>>>> 68ba331 (update favicon)
 
   // Set the production url of your site here
   url: 'https://docs.loreum.org',
