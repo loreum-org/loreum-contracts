@@ -5,9 +5,9 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'Loreum Documentation',
+  title: 'Docs',
   tagline: 'AI-Powered Decentralized Governance',
-  favicon: 'img/favicon.ico',
+  favicon: 'https://cdn.loreum.org/logos/black.png',
 
   // Set the production url of your site here
   url: 'https://docs.loreum.org',
@@ -31,6 +31,12 @@ const config: Config = {
     locales: ['en'],
   },
 
+  markdown: {
+    mermaid: true,
+  },
+  
+  themes: ['@docusaurus/theme-mermaid'],
+
   presets: [
     [
       'classic',
@@ -52,19 +58,19 @@ const config: Config = {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     navbar: {
-      title: 'Loreum Docs',
+      title: 'Loreum Documentation',
       logo: {
         alt: 'Loreum Logo',
         src: 'https://cdn.loreum.org/logos/black.svg',
         srcDark: 'https://cdn.loreum.org/logos/white.svg',
       },
       items: [
-        {
-          type: 'docSidebar',
-          sidebarId: 'docs',
-          position: 'left',
-          label: 'Documentation',
-        },
+        // {
+        //   type: 'docSidebar',
+        //   sidebarId: 'docs',
+        //   position: 'left',
+        //   label: 'Documentation',
+        // },
         {
           href: 'https://github.com/loreum-org',
           label: 'GitHub',

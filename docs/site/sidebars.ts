@@ -21,13 +21,13 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Whitepaper',
+      label: 'Overview',
       items: [
-        'whitepaper/index',
-        'whitepaper/architecture',
-        'whitepaper/ai-integration',
-        'whitepaper/governance',
-        'whitepaper/implementation',
+        'overview/index',
+        'overview/architecture',
+        'overview/ai-integration',
+        'overview/governance',
+        'overview/implementation',
       ],
     },
     {
@@ -55,16 +55,6 @@ const sidebars: SidebarsConfig = {
         'guides/delegation',
         'guides/transactions',
         'guides/governance',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'API Reference',
-      items: [
-        'api/overview',
-        'api/chamber',
-        'api/board',
-        'api/wallet',
       ],
     },
     {
