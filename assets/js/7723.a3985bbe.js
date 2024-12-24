@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs_loreum_org=self.webpackChunkdocs_loreum_org||[]).push([[7723],{7723:(e,r,s)=>{s.d(r,{createPieServices:()=>c.f});var c=s(8685);s(9369)}}]);
