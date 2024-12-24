@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkdocs_loreum_org=self.webpackChunkdocs_loreum_org||[]).push([[9720],{9720:(e,r,c)=>{c.d(r,{createArchitectureServices:()=>s.S});var s=c(9936);c(9369)}}]);
