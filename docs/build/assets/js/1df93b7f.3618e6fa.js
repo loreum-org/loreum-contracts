@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkdocs_loreum_org=self.webpackChunkdocs_loreum_org||[]).push([[4583],{6866:(r,e,o)=>{o.r(e),o.d(e,{default:()=>t});var u=o(6347),s=o(4848);function t(){return(0,s.jsx)(u.rd,{to:"/intro"})}}}]);

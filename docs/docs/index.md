@@ -82,7 +82,6 @@ For detailed documentation, visit [docs.loreum.org](https://docs.loreum.org)
 - Discord: [Join our Discord](https://discord.gg/Pb3d5hRV)
 - Twitter: [@loreumdao](https://twitter.com/loreumdao)
 - GitHub: [loreum-org](https://github.com/loreum-org)
-
 ## License
 
 MIT License
@@ -92,3 +91,4 @@ MIT License
 - [Understanding the Architecture](./architecture/overview.md)
 - [Smart Contracts Overview](./contracts/overview.md)
 - [User Guides](./guides/getting-started.md)
+
