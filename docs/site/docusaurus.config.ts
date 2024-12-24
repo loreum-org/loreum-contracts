@@ -5,7 +5,11 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
+<<<<<<< HEAD
   title: 'Docs',
+=======
+  title: 'Loreum',
+>>>>>>> 29d5662 (Change name)
   tagline: 'AI-Powered Decentralized Governance',
 <<<<<<< HEAD
 <<<<<<< HEAD
