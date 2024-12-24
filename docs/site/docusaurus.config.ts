@@ -6,10 +6,14 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
 <<<<<<< HEAD
+<<<<<<< HEAD
   title: 'Docs',
 =======
   title: 'Loreum',
 >>>>>>> 29d5662 (Change name)
+=======
+  title: 'Docs',
+>>>>>>> 77c2615 (Update docs)
   tagline: 'AI-Powered Decentralized Governance',
 <<<<<<< HEAD
 <<<<<<< HEAD
