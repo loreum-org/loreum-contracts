@@ -1,56 +1,81 @@
-<img style="{align: right}" src="https://cdn.loreum.org/logos/black.png"  height="50"/>
+# Loreum Chamber
 
-# Chamber Multisig
+Loreum is a Smart Account framework that integrates artificial intelligence agents with decentralized capital management and directorship. The system introduces a novel Chamber architecture that enables dynamic, market-driven governance while maintaining human oversight through a unique delegation mechanism.
 
-![Foundry CI](https://github.com/loreum-org/chamber/actions/workflows/forge.yaml/badge.svg)
-[![GitBook - Documentation](https://img.shields.io/badge/GitBook-Documentation-orange?logo=gitbook&logoColor=white)](https://docs.loreum.org/blog)
-[![License: BUSL 1.1](https://img.shields.io/badge/License-MIT.svg)](https://github.com/loreum-org/chamber/LICENSE)
+## Overview
 
-The Chamber is a multisig wallet that enables liquid democracy for Treasury and Protocol Management by the token community. Due to their composability, Chambers are a protocol governance standard that enables Access Control Roles to be controlled by token holders through representative leaders, rather than a core group of static founders. This enables decentralized ownership of DeFi protocols.
-Chambers provide the functionality of a multisig wallet where signers are determined by delegation of ERC20 governance tokens.
+The Chamber represents a novel smart account architecture that fundamentally reimagines organizational governance through three integrated components:
+- Board management
+- Wallet operations
+- Delegation mechanics
 
-The contract inherits upon instantiation existing ERC20 governance and ERC721 membership tokens. Delegations are made to ERC721 tokens which creates a leaderboard within the Chamber contract. The leaders are responsible for signing transactions and being the governors of the multisig. Each leader has a single vote that is not correlated to wallet balance, but rather by delegation of ERC20 governance tokens by the community against their NFT TokenId.
+### Key Features
 
-## Use Cases
+- Market-driven governance through token delegation
+- Hybrid human-AI decision making
+- Multi-signature security
+- Flexible extensibility through SubDAOs
 
-1. **Protocol Admin Multisig**
+## Architecture
 
-The primary use cases for a chmaber contract is to be a protocol multisig wallet that owns the various roles and assets of a DAO or DeFi protocol. It's intended to be a drop-in replacement for the "Gnosis" Safe Multisig wallet.
+### Board System
+- Maintains an ordered ranking of leaders based on delegated voting power
+- Automatically reorders positions when delegation amounts change
+- Tracks director status for the top N positions
 
-2. **DeFi Composability**
+### Wallet System
+- Multi-signature transaction management
+- Quorum-based approval system
+- Batch transaction support
+- Revocable transaction confirmations
 
-Chambers are composable by inheriting any exisitng governance ERC20 token accross a number of Chambers and Sub Chambers. This horizontal and veritical composibility creates utility and intrinsic scarcity of DAO governance tokens.
+### Delegation System
+- Market-driven leadership selection
+- Fluid reallocation of voting power
+- Double-entry bookkeeping for delegations
+- Immediate withdrawal capabilities
+
 
 ```mermaid
-  graph TD;
-      A[Dao Chamber]-->B[Sub Chamber];
-      A[Dao Chamber]-->|claimYield|B[Sub Chamber];
-      C[Vault 1]-->|true|B;
-      D[Vault 2]-->|uint256|B;
-      B-->|onlyOwner|C;
-      B-->A;
-      B-->|compound|D;
+  graph TD
+  subgraph Chamber
+  B[Board Management]
+  W[Wallet Operations]
+  end
+  subgraph Governance
+  H[Human NFT Holders]
+  A[AI Agent NFT Holders]
+  T[Token Holders]
+  end
+  subgraph Operations
+  TX[Transactions]
+  TR[Treasury]
+  end
+  T -->|Delegate| H
+  T -->|Delegate| A
+  H -->|Director| B
+  A -->|Director| B
+  B -->|Approve| W
+  W -->|Execute| TX
+  W -->|Manage| TR
 ```
+## Contract Addresses
 
-3. **DAO Governance**
+### Sepolia Testnet
+- Chamber: `0xB99DEdbDe082B8Be86f06449f2fC7b9FED044E15`
+- Governance Token: `0x7756d245527f5f8925a537be509bf54feb2fdc99`
+- Team Multisig: `0x5d45a213b2b6259f0b3c116a8907b56ab5e22095`
 
-Chambers are meant to replicate the power dynamics of a modern company. The Chamber's governance system is a board with a specified number of seats. The board is controlled by Directors which are determined by token delegation. These Directors may then submit, confirm and execute transactions from the Chamber wallet.
+## Documentation
 
+For detailed documentation, visit [docs.loreum.org](https://docs.loreum.org)
 
-Chambers use NFTs as membership tokens. Token delegation is done by allocating to an NFT tokenId, and a leaderboard of delegation balances is used to determine which NFTs are the Directors. NFTs are used to distinguish community members from sybil EOAs and function as  credentials to participate in the governance process.
+## Community
 
+- Discord: [Join our Discord](https://discord.gg/Pb3d5hRV)
+- Twitter: [@loreumdao](https://twitter.com/loreumdao)
+- GitHub: [loreum-org](https://github.com/loreum-org)
 
-Each Chamber is created with a designated number of seats and a quorum. If a member of the community removes their delegatation to a tokenId, that Director may lose their seat on the board and  ability to manage transactions. This creates a representative board of decision makers based on revocable authority by delegation.
+## License
 
-### Setup
-
-```
-git submodule update --init --recursive
-```
-
-### Foundry
-
-```
-forge build
-forge test
-```
+MIT License
