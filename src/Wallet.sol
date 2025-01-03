@@ -101,8 +101,6 @@ abstract contract Wallet {
         transaction.executed = true;
 
         emit ExecuteTransaction(msg.sender, nonce);
-
-        emit ExecuteTransaction(msg.sender, nonce);
     }
 
     /// @notice Returns the total number of transactions
