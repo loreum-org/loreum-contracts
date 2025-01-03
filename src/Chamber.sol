@@ -205,7 +205,7 @@ contract Chamber is Board, Wallet, ReentrancyGuard {
     /// @notice Executes a transaction if it has enough confirmations
     /// @param transactionId The ID of the transaction to execute
     function executeTransaction(uint256 transactionId) public onlyDirector {
-        if (getTransaction(transactionId).numConfirmations < getQuorum()) revert NotEnoughConfirmations();
+        if (getTransaction(transactionId).confirmations < getQuorum()) revert NotEnoughConfirmations();
         _executeTransaction(transactionId);
     }
 
@@ -243,7 +243,7 @@ contract Chamber is Board, Wallet, ReentrancyGuard {
     function executeBatchTransactions(uint256[] memory transactionIds) public onlyDirector {
         for (uint256 i = 0; i < transactionIds.length; i++) {
             uint256 transactionId = transactionIds[i];
-            if (getTransaction(transactionId).numConfirmations < getQuorum()) revert NotEnoughConfirmations();
+            if (getTransaction(transactionId).confirmations < getQuorum()) revert NotEnoughConfirmations();
             _executeTransaction(transactionId);
         }
     }

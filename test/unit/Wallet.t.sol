@@ -1,4 +1,5 @@
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {MockWallet} from "test/mock/MockWallet.sol";
@@ -25,7 +26,7 @@ contract WalletTest is Test {
         assertEq(value, trx.value);
         assertEq(data, trx.data);
         assertEq(false, trx.executed);
-        assertEq(0, trx.numConfirmations);
+        assertEq(1, trx.confirmations);
     }
 
     function test_Wallet_ConfirmTransaction() public {
@@ -34,9 +35,12 @@ contract WalletTest is Test {
         bytes memory data = "";
 
         wallet.submitTransaction(target, value, data);
-        wallet.confirmTransaction(0);
 
-        assertEq(wallet.getTransaction(0).numConfirmations, 1);
+        vm.startPrank(user1);
+        wallet.confirmTransaction(0);
+        vm.stopPrank();
+
+        assertEq(wallet.getTransaction(0).confirmations, 2);
     }
 
     function test_Wallet_RevokeConfirmation() public {
@@ -45,10 +49,9 @@ contract WalletTest is Test {
         bytes memory data = "";
 
         wallet.submitTransaction(target, value, data);
-        wallet.confirmTransaction(0);
         wallet.revokeConfirmation(0);
 
-        assertEq(wallet.getTransaction(0).numConfirmations, 0);
+        assertEq(wallet.getTransaction(0).confirmations, 0);
     }
 
     function test_Wallet_ExecuteTransaction() public {
@@ -58,7 +61,6 @@ contract WalletTest is Test {
         deal(address(wallet), 1 ether);
 
         wallet.submitTransaction(target, value, data);
-        wallet.confirmTransaction(0);
         wallet.executeTransaction(0);
 
         assertEq(wallet.getTransaction(0).executed, true);
@@ -84,10 +86,28 @@ contract WalletTest is Test {
         bytes memory data = "";
 
         wallet.submitTransaction(target, value, data);
-        wallet.confirmTransaction(0);
 
         bool isConfirmed = wallet.getConfirmation(0, address(this));
 
         assertEq(isConfirmed, true);
+    }
+
+    function test_Wallet_GetCurrentNonce() public {
+        address target = address(0x3);
+        uint256 value = 1 ether;
+        bytes memory data = "";
+
+        uint256 initialNonce = wallet.getCurrentNonce();
+        assertEq(initialNonce, 0);
+
+        wallet.submitTransaction(target, value, data);
+
+        uint256 newNonce = wallet.getCurrentNonce();
+        assertEq(newNonce, 0);
+
+        wallet.submitTransaction(target, value, data);
+
+        uint256 newNonce1 = wallet.getCurrentNonce();
+        assertEq(newNonce1, 1);        
     }
 }
