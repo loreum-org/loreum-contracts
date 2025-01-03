@@ -26,3 +26,5 @@ docs/whitepaper.out
 # docs
 node_modules
 .docusaurus
+
+broadcast/*/*/dry-run
