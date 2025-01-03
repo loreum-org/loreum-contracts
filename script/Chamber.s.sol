@@ -19,10 +19,6 @@ contract DeployChamber is Script {
             // Sepolia
             token = 0xedf2e61ADD8976AC08Df4AFB69faDCD1428555f7;
             nft = 0xe02A8f23c19280dd828Eb5CA5EC89d64345f06d8;
-        } else if (block.chainid == 1) {
-            // Mainnet
-            token = address(0); // Set mainnet token address
-            nft = address(0); // Set mainnet NFT address
         } else {
             token = address(0); // Set mainnet token address
             nft = address(0); // Set mainnet NFT address

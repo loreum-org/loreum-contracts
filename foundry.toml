@@ -12,4 +12,7 @@ optimizer_runs = 200
 out = 'out'
 src = 'src'
 script = 'script'
-test = 'test'
+test = 'test/unit'
+
+[profile.sepolia]
+test = "test/sepolia"

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Chamber} from "src/Chamber.sol";
@@ -134,7 +134,7 @@ contract ChamberTest is Test {
         assertEq(value, trx.value);
         assertEq(data, trx.data);
         assertEq(false, trx.executed);
-        assertEq(0, trx.numConfirmations);
+        assertEq(1, trx.confirmations);
     }
 
     function test_Chamber_ConfirmTransaction() public {
@@ -152,10 +152,9 @@ contract ChamberTest is Test {
         chamber.delegate(tokenId, 1);
 
         chamber.submitTransaction(target, value, data);
-        chamber.confirmTransaction(0);
         vm.stopPrank();
 
-        assertEq(chamber.getTransaction(0).numConfirmations, 1);
+        assertEq(chamber.getTransaction(0).confirmations, 1);
     }
 
     function test_Chamber_RevokeConfirmation() public {
@@ -173,11 +172,10 @@ contract ChamberTest is Test {
         chamber.delegate(tokenId, 1);
 
         chamber.submitTransaction(target, value, data);
-        chamber.confirmTransaction(0);
         chamber.revokeConfirmation(0);
         vm.stopPrank();
 
-        assertEq(chamber.getTransaction(0).numConfirmations, 0);
+        assertEq(chamber.getTransaction(0).confirmations, 0);
     }
 
     function test_Chamber_ExecuteTransaction() public {
@@ -218,7 +216,6 @@ contract ChamberTest is Test {
         vm.stopPrank();
 
         vm.startPrank(user1);
-        chamber.confirmTransaction(0);
         chamber.executeTransaction(0);
         vm.stopPrank();
 
@@ -572,7 +569,6 @@ contract ChamberTest is Test {
         // Submit and confirm the transaction
         vm.startPrank(user1);
         chamber.submitTransaction(target, 0, data);
-        chamber.confirmTransaction(0);
         vm.stopPrank();
 
         vm.startPrank(user2);
@@ -652,7 +648,6 @@ contract ChamberTest is Test {
         uint256[] memory batch = new uint256[](2);
         batch[0] = 0;
         batch[1] = 1;
-        chamber.confirmBatchTransactions(batch);
         vm.stopPrank();
 
         vm.startPrank(user2);
@@ -688,7 +683,6 @@ contract ChamberTest is Test {
         // Submit approve transaction
         vm.startPrank(user1);
         chamber.submitTransaction(target, 0, approveData);
-        chamber.confirmTransaction(0);
         vm.stopPrank();
 
         vm.startPrank(user2);
@@ -703,7 +697,6 @@ contract ChamberTest is Test {
         // Submit transfer transaction
         vm.startPrank(user1);
         chamber.submitTransaction(target, 0, transferData);
-        chamber.confirmTransaction(1);
         vm.stopPrank();
 
         // Only one confirmation, should revert on execute
