@@ -673,4 +673,44 @@ contract ChamberTest is Test {
         assertEq(address(0x4).balance, 2 ether);
         assertEq(address(chamber).balance, 0);
     }
+
+    function test_Chamber_ExecuteTransactionLowConfCount() public {
+        uint256 amount = 1000;
+        address target = address(token);
+        bytes memory approveData = abi.encodeWithSignature("approve(address,uint256)", address(0x5), amount);
+        bytes memory transferData = abi.encodeWithSignature("transfer(address,uint256)", address(0x5), amount);
+
+        // Mint tokens to chamber
+        MockERC20(address(token)).mint(address(chamber), amount);
+
+        addDirectors();
+
+        // Submit approve transaction
+        vm.startPrank(user1);
+        chamber.submitTransaction(target, 0, approveData);
+        chamber.confirmTransaction(0);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        chamber.confirmTransaction(0);
+        vm.stopPrank();
+
+        vm.startPrank(user3);
+        chamber.confirmTransaction(0);
+        chamber.executeTransaction(0);
+        vm.stopPrank();
+
+        // Submit transfer transaction
+        vm.startPrank(user1);
+        chamber.submitTransaction(target, 0, transferData);
+        chamber.confirmTransaction(1);
+        vm.stopPrank();
+
+        // Only one confirmation, should revert on execute
+        vm.startPrank(user1);
+
+        vm.expectRevert();
+        chamber.executeTransaction(1);
+        vm.stopPrank();
+    }
 }
