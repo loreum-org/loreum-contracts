@@ -8,7 +8,7 @@
 \usetikzlibrary{positioning}
 
 \title{Loreum: AI-Powered Decentralized Governance}
-\author{Chad Lynch \\ \small{chad@loreum.org} \\ \small{version: 0.1.2}}
+\author{Chad Lynch \\ \small{chad@loreum.org} \\ \small{version: 0.1.3}}
 \date{\today}
 
 \begin{document}
@@ -16,7 +16,7 @@
 \maketitle
 
 \begin{abstract}
-Loreum is a Smart Account framework that integrates artificial intelligence agents with decentralized capital management and directorship. By combining AI agents with on-chain smart contract systems, Loreum addresses fundamental limitations in traditional corporate and DAO governance structures. The system introduces a novel Chamber architecture that enables dynamic, market-driven governance while maintaining human oversight through a unique delegation mechanism.
+Loreum is a Smart Account framework that integrates artificial intelligence agents with decentralized capital management and directorship. By combining AI agents with on-chain smart contract systems, Loreum addresses fundamental limitations in traditional corporate and DAO governance structures. The system introduces a novel Chamber architecture that implements the ERC-4626 tokenized vault standard, enabling dynamic, market-driven governance while maintaining human oversight through a unique delegation mechanism.
 \end{abstract}
 
 \section{Introduction}
@@ -35,7 +35,9 @@ The Chamber implements a futarchic governance model through its delegation mecha
 This market-driven approach creates natural selection pressure for effective leadership, as token holders can fluidly reallocate their delegation in response to performance. The system maintains atomic consistency through reentrancy protection and ensures that all delegated power can be withdrawn immediately if needed, creating a responsive governance mechanism that can rapidly adapt to changing conditions.
 
 \subsection{Technical Implementation}
-The Chamber's core functionality is implemented through a sophisticated combination of data structures and consensus mechanisms. The board structure utilizes a doubly-linked list that maintains nodes containing tokenId, amount, and positional data. This structure enables O(n) insertion and removal operations while maintaining a constantly sorted order of delegations. The system implements automatic reordering on delegation changes, ensuring that the leadership structure always reflects current market sentiment.
+The Chamber's core functionality is implemented through a sophisticated combination of data structures and consensus mechanisms. The contract inherits from ERC-4626 for vault functionality, Board for delegation tracking, and Wallet for transaction management. This creates a modular system that separates concerns while maintaining atomic consistency across all operations.
+
+The board structure utilizes a doubly-linked list that maintains nodes containing tokenId, amount, and positional data. This structure enables O(n) insertion and removal operations while maintaining a constantly sorted order of delegations. The system implements automatic reordering on delegation changes, ensuring that the leadership structure always reflects current market sentiment.
 
 The wallet operations layer implements a multi-signature system with batch transaction support, enabling efficient operations while maintaining security through distributed consensus. Transaction execution requires explicit confirmation from a quorum of directors, with all confirmations being revocable until execution. This creates a flexible yet secure framework for treasury management and organizational operations.
 
@@ -47,15 +49,35 @@ Transaction safety is ensured through a multi-signature requirement that enforce
 The delegation security layer implements comprehensive validation of all token movements and maintains strict accounting of delegated amounts. The system enforces atomic operations for all delegation changes and implements immediate withdrawal capabilities, ensuring that token holders maintain ultimate control over their delegated power. This creates a robust foundation for integrating AI agents while maintaining human oversight through market mechanisms.
 
 \subsection{Token Economics}
-The system implements a carefully designed dual-token model that separates governance power from identity:
+The system implements a carefully designed token model that separates governance power from yield-bearing shares:
 
 \begin{enumerate}
+    \item Vault Shares (ERC-4626)
+    The Chamber implements the ERC-4626 standard, allowing users to deposit governance tokens and receive shares representing their proportion of the vault. These shares can be transferred while maintaining delegation relationships and can be redeemed for the underlying assets plus any accrued yield.
+    
     \item Governance Token (ERC20)
-    The fungible governance token serves as the primary mechanism for allocating and delegating voting power within the system. Token holders can delegate their voting power to leaders they trust, creating a market-driven approach to governance where the most effective leaders naturally accumulate more influence. This creates strong incentives for responsible leadership and active participation in governance.
+    The underlying governance token serves as the primary mechanism for allocating and delegating voting power within the system. Token holders can deposit their tokens into the Chamber vault while maintaining their ability to delegate voting power.
     
     \item Identity Token (ERC721)
-    Non-fungible tokens are used to establish unique identities for both human participants and AI agents within the system. These tokens serve as the targets for delegation, allowing governance power to flow to specific entities. The NFTs also enable precise tracking of leadership positions and voting power accumulation, providing transparency into the governance structure.
+    Non-fungible tokens are used to establish unique identities for both human participants and AI agents within the system. These tokens serve as the targets for delegation, allowing governance power to flow to specific entities.
 \end{enumerate}
+
+\subsection{Vault Implementation}
+The Chamber implements the ERC-4626 tokenized vault standard, providing a standardized interface for yield-bearing vaults. This implementation enables:
+\begin{itemize}
+    \item Efficient capital pooling through deposit/mint and withdraw/redeem functions
+    \item Standardized accounting for shares and underlying assets
+    \item Composability with other DeFi protocols
+    \item Automated yield distribution
+\end{itemize}
+
+The vault functionality is integrated with the governance system, allowing token holders to maintain their voting power while earning yields on deposited assets. The Chamber's ERC-4626 implementation ensures:
+\begin{itemize}
+    \item Accurate share price calculations
+    \item Safe transfer and withdrawal mechanisms
+    \item Delegation tracking during share transfers
+    \item Atomic operations for deposits and withdrawals
+\end{itemize}
 
 \section{AI Agent Integration}
 
