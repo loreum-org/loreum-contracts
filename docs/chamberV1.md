@@ -6,20 +6,25 @@
 [![GitBook - Documentation](https://img.shields.io/badge/GitBook-Documentation-orange?logo=gitbook&logoColor=white)](https://docs.loreum.org/blog)
 [![License: BUSL 1.1](https://img.shields.io/badge/License-MIT.svg)](https://github.com/loreum-org/chamber/LICENSE)
 
-The Chamber is a multisig wallet that enables liquid democracy for Treasury and Protocol Management by the token community. Due to their composability, Chambers are a protocol governance standard that enables Access Control Roles to be controlled by token holders through representative leaders, rather than a core group of static founders. This enables decentralized ownership of DeFi protocols.
+The Chamber is a multisig wallet and ERC-4626 tokenized vault that enables liquid democracy for Treasury and Protocol Management by the token community. Due to their composability, Chambers are a protocol governance standard that enables Access Control Roles to be controlled by token holders through representative leaders, rather than a core group of static founders. This enables decentralized ownership of DeFi protocols while allowing token holders to earn yield on their deposited governance tokens.
+
 Chambers provide the functionality of a multisig wallet where signers are determined by delegation of ERC20 governance tokens.
 
 The contract inherits upon instantiation existing ERC20 governance and ERC721 membership tokens. Delegations are made to ERC721 tokens which creates a leaderboard within the Chamber contract. The leaders are responsible for signing transactions and being the governors of the multisig. Each leader has a single vote that is not correlated to wallet balance, but rather by delegation of ERC20 governance tokens by the community against their NFT TokenId.
 
 ## Use Cases
 
-1. **Treasury Multisig**
+1. **Treasury Multisig & Yield Generation**
 
-The primary use cases for a chmaber contract is to be a treasury multisig wallet that owns the various roles and assets of a DAO or DeFi protocol. It's intended to be a drop-in replacement for the "Gnosis" Safe Multisig wallet.
+The primary use case for a Chamber contract is to be a treasury multisig wallet that owns the various roles and assets of a DAO or DeFi protocol. As an ERC-4626 vault, it also enables token holders to earn yield on their deposited governance tokens while maintaining their delegation power. It's intended to be a yield-generating enhancement to the traditional "Gnosis" Safe Multisig wallet.
 
 2. **DeFi Composability**
 
-Chambers are composable by inheriting any exisitng governance ERC20 token accross a number of Chambers and Sub Chambers. This horizontal and veritical composibility creates utility and intrinsic scarcity of governance tokens.
+Chambers are composable by inheriting any existing governance ERC20 token across a number of Chambers and Sub Chambers. The ERC-4626 standard ensures compatibility with other DeFi protocols, allowing for:
+- Automated yield strategies
+- Standardized vault interfaces
+- Efficient capital pooling
+- Composable yield generation
 
 ```mermaid
   graph TD;
@@ -32,10 +37,13 @@ Chambers are composable by inheriting any exisitng governance ERC20 token accros
       B-->|compound|D;
 ```
 
-3. **DAO Governance**
+3. **DAO Governance with Yield**
 
-Instantiating a Chamber with the same ERC20 and ERC721 tokens as used in common with the token-econmic model creates a shared value system. Voting power to control assets depends on token delegation which can migrate, but not inflate or dilute voting power across the various Chambers. The scarcity of total supply extends to limit the authority of token balances.
-
+The Chamber combines governance functionality with yield generation through its ERC-4626 implementation. Token holders can:
+- Deposit governance tokens to receive vault shares
+- Maintain delegation power while earning yield
+- Participate in governance through delegation
+- Redeem shares for underlying tokens plus yield
 
 Each Chamber is created with a designated number of leaders and a quorum. Each leader has a single vote and is represented by an NFT tokenId. If a member of the community removes their delegatation to a tokenId, that leader may be removed from the leaderboard and lose their ability to approve transaction proposals. Leaders have multisig signing authority only so long as their delegation places them at the top of the leaderboard. This creates a representative board of decision makers based on revocable authority by delegation.
 
@@ -71,7 +79,7 @@ forge test
 
 ## Chamber Contract Overview
 
-The Chamber contract, part of the Loreum Chamber v1, is a Multsignature protocol management solution. It is designed to facilitate decentralized governance and liquid democracy within the Ethereum blockchain ecosystem. By leveraging ERC721 (NFTs) for membership and ERC20 tokens for governance (staking), the Chamber contract introduces a unique approach to protocol and treasury management.
+The Chamber contract, part of the Loreum Chamber v1, is a Multisignature protocol management solution that implements the ERC-4626 tokenized vault standard. It is designed to facilitate decentralized governance and liquid democracy while enabling yield generation for token holders within the Ethereum blockchain ecosystem.
 
 ### Key Features
 
@@ -86,6 +94,12 @@ The Chamber contract, part of the Loreum Chamber v1, is a Multsignature protocol
 **Delegation Tracking**: Maintains detailed records of governance token delegation, both on a per-NFT basis 1 and per-user basis 2, facilitating transparent and fair governance.
 
 **Dynamic Leaderboard Updates**: Features mechanisms to promote or demote members on the leaderboard based on changes in their delegated token balance, ensuring the leaderboard remains current and reflective of the community's consensus.
+
+**Vault Functionality**: Implements ERC-4626 for standardized vault operations, enabling:
+- Deposit/mint and withdraw/redeem functions
+- Yield generation on deposited tokens
+- Standardized share accounting
+- DeFi protocol composability
 
 ### Functions
 

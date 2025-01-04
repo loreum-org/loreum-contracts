@@ -355,7 +355,12 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
      * @param value The amount of tokens to transfer
      * @return true if the transfer is successful
      */
-    function transferFrom(address from, address to, uint256 value) public override(ERC20, IERC20) nonReentrant returns (bool) {
+    function transferFrom(address from, address to, uint256 value)
+        public
+        override(ERC20, IERC20)
+        nonReentrant
+        returns (bool)
+    {
         if (to == address(0)) revert TransferToZeroAddress();
 
         address spender = _msgSender();
