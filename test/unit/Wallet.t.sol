@@ -18,7 +18,7 @@ contract WalletTest is Test {
         uint256 value = 1 ether;
         bytes memory data = "";
 
-        wallet.submitTransaction(target, value, data);
+        wallet.submitTransaction(1, target, value, data);
 
         MockWallet.Transaction memory trx = wallet.getTransaction(0);
 
@@ -29,18 +29,23 @@ contract WalletTest is Test {
         assertEq(1, trx.confirmations);
     }
 
-    function test_Wallet_ConfirmTransaction() public {
+    function test_Wallet_ConfirmTransaction_Success() public {
         address target = address(0x3);
         uint256 value = 1 ether;
         bytes memory data = "";
 
-        wallet.submitTransaction(target, value, data);
+        wallet.submitTransaction(1, target, value, data);
+        assertEq(wallet.getTransaction(0).confirmations, 1);
+    }
 
-        vm.startPrank(user1);
-        wallet.confirmTransaction(0);
-        vm.stopPrank();
+    function test_Wallet_ConfirmTransaction_Fail() public {
+        address target = address(0x3);
+        uint256 value = 1 ether;
+        bytes memory data = "";
 
-        assertEq(wallet.getTransaction(0).confirmations, 2);
+        wallet.submitTransaction(1, target, value, data);
+        vm.expectRevert();
+        wallet.confirmTransaction(1, 0);
     }
 
     function test_Wallet_RevokeConfirmation() public {
@@ -48,8 +53,8 @@ contract WalletTest is Test {
         uint256 value = 1 ether;
         bytes memory data = "";
 
-        wallet.submitTransaction(target, value, data);
-        wallet.revokeConfirmation(0);
+        wallet.submitTransaction(1, target, value, data);
+        wallet.revokeConfirmation(1, 0);
 
         assertEq(wallet.getTransaction(0).confirmations, 0);
     }
@@ -60,8 +65,8 @@ contract WalletTest is Test {
         bytes memory data = "";
         deal(address(wallet), 1 ether);
 
-        wallet.submitTransaction(target, value, data);
-        wallet.executeTransaction(0);
+        wallet.submitTransaction(1, target, value, data);
+        wallet.executeTransaction(1, 0);
 
         assertEq(wallet.getTransaction(0).executed, true);
         assertEq(address(0x3).balance, 1 ether);
@@ -73,7 +78,7 @@ contract WalletTest is Test {
         uint256 value = 1 ether;
         bytes memory data = "";
 
-        wallet.submitTransaction(target, value, data);
+        wallet.submitTransaction(1, target, value, data);
 
         uint256 count = wallet.getTransactionCount();
 
@@ -85,9 +90,9 @@ contract WalletTest is Test {
         uint256 value = 1 ether;
         bytes memory data = "";
 
-        wallet.submitTransaction(target, value, data);
+        wallet.submitTransaction(1, target, value, data);
 
-        bool isConfirmed = wallet.getConfirmation(0, address(this));
+        bool isConfirmed = wallet.getConfirmation(1, 0);
 
         assertEq(isConfirmed, true);
     }
@@ -100,14 +105,14 @@ contract WalletTest is Test {
         uint256 initialNonce = wallet.getCurrentNonce();
         assertEq(initialNonce, 0);
 
-        wallet.submitTransaction(target, value, data);
+        wallet.submitTransaction(1, target, value, data);
 
         uint256 newNonce = wallet.getCurrentNonce();
         assertEq(newNonce, 0);
 
-        wallet.submitTransaction(target, value, data);
+        wallet.submitTransaction(1, target, value, data);
 
         uint256 newNonce1 = wallet.getCurrentNonce();
-        assertEq(newNonce1, 1);        
+        assertEq(newNonce1, 1);
     }
 }
