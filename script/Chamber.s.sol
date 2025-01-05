@@ -26,7 +26,7 @@ contract DeployChamber is Script {
             nft = 0x03c4738Ee98aE44591e1A4A4F3CaB6641d95DD9a;
         }
 
-        new Chamber(asset, nft, 5, "cLORE", "Chamber LORE");
+        new Chamber(asset, nft, 5, "Chamber LORE", "cLORE");
 
         vm.stopBroadcast();
     }

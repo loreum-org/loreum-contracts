@@ -38,6 +38,9 @@ abstract contract Board {
     /// @notice Total number of nodes in the list
     uint256 internal size;
 
+    /// circuit breaker
+    bool private locked;
+
     /**
      * @notice Structure representing a proposal to update the number of board seats
      * @param proposedSeats The proposed new number of seats
@@ -118,6 +121,32 @@ abstract contract Board {
     /// @param supporter The address of the supporter
     error SupporterNotOnLeaderboard(address supporter);
 
+    /// MODIFIERS ///
+
+    /**
+     * @notice Modifier that implements a circuit breaker pattern to pause functionality
+     * @dev Sets a locked state during execution and releases after completion
+     * @custom:throws "Circuit breaker active" if the contract is already locked
+     */
+    modifier circuitBreaker() {
+        require(!locked, "Circuit breaker active");
+        locked = true;
+        _;
+        locked = false;
+    }
+    
+    /**
+     * @notice Modifier that prevents reentrancy and contract calls
+     * @dev Checks if caller is an EOA or if circuit breaker is not active
+     * @custom:throws "No contract calls" if caller is a contract and circuit breaker is active
+     */
+    modifier preventReentry() {
+        require(msg.sender.code.length == 0 || !locked, "No contract calls");
+        _;
+    }
+
+    /// FUNCTIONS ///
+
     /**
      * @notice Retrieves node information for a given tokenId
      * @param tokenId The token ID to query
@@ -133,7 +162,7 @@ abstract contract Board {
      * @param tokenId The token ID to delegate to
      * @param amount The amount of tokens to delegate
      */
-    function _delegate(uint256 tokenId, uint256 amount) internal {
+    function _delegate(uint256 tokenId, uint256 amount) internal preventReentry {
         Node storage node = nodes[tokenId];
         if (node.tokenId == tokenId) {
             // Update existing node
@@ -152,7 +181,7 @@ abstract contract Board {
      * @param tokenId The token ID to undelegate from
      * @param amount The amount of tokens to undelegate
      */
-    function _undelegate(uint256 tokenId, uint256 amount) internal {
+    function _undelegate(uint256 tokenId, uint256 amount) internal preventReentry {
         Node storage node = nodes[tokenId];
         if (node.tokenId != tokenId) revert NodeDoesNotExist();
         if (amount > node.amount) revert AmountExceedsDelegation();
@@ -167,13 +196,25 @@ abstract contract Board {
         emit Undelegate(msg.sender, tokenId, amount);
     }
 
+    function _reposition(uint256 tokenId) internal circuitBreaker {
+        Node memory node = nodes[tokenId];
+        require(node.tokenId == tokenId, "Invalid node");
+        
+        bool success = _remove(tokenId);
+        require(success, "Remove failed");
+        
+        _insert(tokenId, node.amount);
+    }    
+
     function _insert(uint256 tokenId, uint256 amount) internal {
         if (head == 0) {
             _initializeFirstNode(tokenId, amount);
         } else {
             _insertNodeInOrder(tokenId, amount);
         }
-        _incrementSize();
+        unchecked {
+            size++;
+        }
     }
 
     function _initializeFirstNode(uint256 tokenId, uint256 amount) private {
@@ -183,36 +224,47 @@ abstract contract Board {
     }
 
     function _insertNodeInOrder(uint256 tokenId, uint256 amount) private {
-        uint256 current = head;
-        uint256 previous = 0;
+        // Cache head value
+        uint256 _head = head;
+        uint256 current = _head;
+        uint256 previous;
+        
+        // Use unchecked for gas savings since we control node linking
+        unchecked {
+            // Find insertion point
+            while (current != 0) {
+                // Cache node amount to avoid multiple SLOADs
+                uint256 currentAmount = nodes[current].amount;
+                if (amount > currentAmount) break;
+                previous = current;
+                current = nodes[current].next;
+            }
 
-        while (current != 0 && amount <= nodes[current].amount) {
-            previous = current;
-            current = nodes[current].next;
-        }
+            // Create new node
+            nodes[tokenId].tokenId = tokenId;
+            nodes[tokenId].amount = amount;
+            nodes[tokenId].next = current;
+            nodes[tokenId].prev = previous;
 
-        nodes[tokenId] = Node({tokenId: tokenId, amount: amount, next: current, prev: previous});
-
-        if (current == 0) {
-            nodes[tail].next = tokenId;
-            tail = tokenId;
-        } else {
-            nodes[current].prev = tokenId;
-            if (previous != 0) {
-                nodes[previous].next = tokenId;
+            // Update links
+            if (current == 0) {
+                // Insert at tail
+                nodes[tail].next = tokenId;
+                tail = tokenId;
             } else {
-                head = tokenId;
+                // Insert in middle/front
+                nodes[current].prev = tokenId;
+                if (previous != 0) {
+                    nodes[previous].next = tokenId;
+                } else {
+                    // New head
+                    head = tokenId;
+                }
             }
         }
     }
 
-    function _incrementSize() private {
-        unchecked {
-            size++;
-        }
-    }
-
-    function _remove(uint256 tokenId) internal {
+    function _remove(uint256 tokenId) internal returns (bool) {
         Node storage node = nodes[tokenId];
         uint256 prev = node.prev;
         uint256 next = node.next;
@@ -232,13 +284,9 @@ abstract contract Board {
         delete nodes[tokenId];
         unchecked {
             size--;
+            return true;            
         }
-    }
 
-    function _reposition(uint256 tokenId) internal {
-        uint256 amount = nodes[tokenId].amount;
-        _remove(tokenId);
-        _insert(tokenId, amount);
     }
 
     // View functions for the leaderboard

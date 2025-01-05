@@ -14,17 +14,17 @@ import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/Reentr
  * @notice This contract manages a multisig wallet with governance and delegation features using ERC20 and ERC721 tokens.
  */
 contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
-    /// @notice The Chamber version
-    string public version = "1.1.0";
+    /// @notice The implementation version
+    string public version = "1.1.3";
 
     /// @notice ERC721 membership token
     IERC721 public nft;
 
-    /// @notice Mapping to track delegated amounts per user per tokenId
-    mapping(address => mapping(uint256 => uint256)) public userDelegation;
+    /// @notice Mapping to track delegated amounts per agent per tokenId
+    mapping(address => mapping(uint256 => uint256)) private agentDelegation;
 
-    /// @notice Mapping to track total delegated amount per user
-    mapping(address => uint256) public totalUserDelegations;
+    /// @notice Mapping to track total delegated amount per agent
+    mapping(address => uint256) private totalAgentDelegations;
 
     /**
      * @notice Emitted when the contract receives Ether
@@ -75,8 +75,8 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
             revert InsufficientChamberBalance();
         }
 
-        userDelegation[msg.sender][tokenId] += amount;
-        totalUserDelegations[msg.sender] += amount;
+        agentDelegation[msg.sender][tokenId] += amount;
+        totalAgentDelegations[msg.sender] += amount;
 
         _delegate(tokenId, amount);
     }
@@ -88,14 +88,14 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
      */
     function undelegate(uint256 tokenId, uint256 amount) external nonReentrant {
         // Cache the current delegation amount to minimize storage reads
-        uint256 currentDelegation = userDelegation[msg.sender][tokenId];
+        uint256 currentDelegation = agentDelegation[msg.sender][tokenId];
         if (currentDelegation < amount || amount == 0) revert InsufficientDelegatedAmount();
 
         uint256 newDelegation = currentDelegation - amount;
 
-        // Update user delegation amount
-        userDelegation[msg.sender][tokenId] = newDelegation;
-        totalUserDelegations[msg.sender] -= amount;
+        // Update agent delegation amount
+        agentDelegation[msg.sender][tokenId] = newDelegation;
+        totalAgentDelegations[msg.sender] -= amount;
 
         _undelegate(tokenId, amount);
     }
@@ -118,6 +118,14 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
      */
     function getTop(uint256 count) public view returns (uint256[] memory, uint256[] memory) {
         return _getTop(count);
+    }
+
+    /**
+     * @notice Returns the total size of the board
+     * @return uint256 current size of the board
+     */
+    function getSize() public view returns (uint256) {
+        return size;
     }
 
     /**
@@ -156,18 +164,18 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
     }
 
     /**
-     * @notice Returns the list of tokenIds to which the user has delegated tokens and the corresponding amounts
-     * @param user The address of the user
+     * @notice Returns the list of tokenIds to which the agent has delegated tokens and the corresponding amounts
+     * @param agent The address of the agent
      * @return tokenIds The list of tokenIds
      * @return amounts The list of amounts delegated to each tokenId
      */
-    function getDelegations(address user) external view returns (uint256[] memory tokenIds, uint256[] memory amounts) {
+    function getDelegations(address agent) external view returns (uint256[] memory tokenIds, uint256[] memory amounts) {
         uint256 count = 0;
         uint256 tokenId = head;
 
         // First pass: count the number of delegations
         while (tokenId != 0) {
-            if (userDelegation[user][tokenId] > 0) {
+            if (agentDelegation[agent][tokenId] > 0) {
                 count++;
             }
             tokenId = nodes[tokenId].next;
@@ -181,15 +189,40 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
         count = 0;
         tokenId = head;
         while (tokenId != 0) {
-            if (userDelegation[user][tokenId] > 0) {
+            if (agentDelegation[agent][tokenId] > 0) {
                 tokenIds[count] = tokenId;
-                amounts[count] = userDelegation[user][tokenId];
+                amounts[count] = agentDelegation[agent][tokenId];
                 count++;
             }
             tokenId = nodes[tokenId].next;
         }
     }
 
+    /**
+     * @notice Returns the amount delegated by a agent to a specific tokenId
+     * @param agent The address of the agent
+     * @param tokenId The token ID
+     * @return amount The amount delegated
+     */
+    function getAgentDelegation(address agent, uint256 tokenId) external view returns (uint256) {
+        return agentDelegation[agent][tokenId];
+    }
+
+    /**
+     * @notice Returns the total amount delegated by a agent across all tokenIds
+     * @param agent The address of the agent
+     * @return amount The total amount delegated
+     */
+    function getTotalAgentDelegations(address agent) external view returns (uint256) {
+        return totalAgentDelegations[agent];
+    }
+
+    /**
+     * @notice Returns the current seat update proposal
+     * @return The current SeatUpdate struct containing proposal details
+     * @dev This includes the proposed number of seats, proposer, timestamp,
+     *      and current support for the proposal
+     */
     function getSeatUpdate() public view returns (SeatUpdate memory) {
         return seatUpdate;
     }
@@ -299,28 +332,34 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
     }
 
     /// @notice Modifier to restrict access to only directors
+    /// @dev Checks if the caller owns a tokenId that is in the top seats
+    /// @param tokenId The NFT token ID to check for directorship
     modifier isDirector(uint256 tokenId) {
+        // Prevent zero tokenId
+        if (tokenId == 0) revert NotDirector();
+
+        // Check if tokenId exists and is owned by caller
+        if (nft.ownerOf(tokenId) != msg.sender) revert NotDirector();
+
         // Check if tokenId is in top seats
-        uint256 seats = _getSeats();
         uint256 current = head;
+        uint256 remaining = _getSeats();
 
-        // Iterate through linked list directly rather than creating array
-        for (uint256 i; i < seats;) {
-            if (current == 0) break; // Exit if we reach end of list
+        // Prevent infinite loop if linked list is corrupted
+        uint256 maxIterations = 100;
+        uint256 iterations;
 
+        while (current != 0 && remaining > 0) {
             if (current == tokenId) {
-                // Found tokenId in top seats, now verify caller owns it
-                if (nft.ownerOf(tokenId) == msg.sender) {
-                    _;
-                    return;
-                }
-                revert NotDirector();
+                _;
+                return;
             }
-
             current = nodes[current].next;
-            unchecked {
-                ++i;
-            }
+            remaining--;
+            
+            // Check for infinite loop
+            iterations++;
+            if (iterations > maxIterations) revert("Linked list error");
         }
         revert NotDirector();
     }
@@ -340,7 +379,7 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
         address owner = _msgSender();
         _transfer(owner, to, value);
 
-        if (balanceOf(owner) < totalUserDelegations[owner]) {
+        if (balanceOf(owner) < totalAgentDelegations[owner]) {
             revert ExceedsDelegatedAmount();
         }
 
@@ -367,7 +406,7 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
         _spendAllowance(from, spender, value);
         _transfer(from, to, value);
 
-        if (balanceOf(from) < totalUserDelegations[from]) {
+        if (balanceOf(from) < totalAgentDelegations[from]) {
             revert ExceedsDelegatedAmount();
         }
 

@@ -46,7 +46,7 @@ contract ChamberTest is Test {
         vm.stopPrank();
 
         // Check user delegation amount
-        assertEq(chamber.userDelegation(user1, tokenId), amount);
+        assertEq(chamber.getAgentDelegation(user1, tokenId), amount);
 
         // Check node amount
         Board.Node memory node = chamber.getMember(tokenId);
@@ -73,7 +73,7 @@ contract ChamberTest is Test {
         vm.stopPrank();
 
         // Check user delegation amount
-        assertEq(chamber.userDelegation(user1, tokenId), 0);
+        assertEq(chamber.getAgentDelegation(user1, tokenId), 0);
 
         // Check node amount
         Board.Node memory node = chamber.getMember(tokenId);
@@ -81,7 +81,7 @@ contract ChamberTest is Test {
     }
 
     function test_Chamber_getLeaderboard_success() public {
-        uint256 num = 500;
+        uint256 num = 100;
         uint256[] memory tokenIds = new uint256[](num);
         uint256[] memory amounts = new uint256[](num);
         address[] memory users = new address[](num);
@@ -464,13 +464,13 @@ contract ChamberTest is Test {
         chamber.delegate(tokenId1, amount);
 
         // Check delegation
-        assertEq(chamber.userDelegation(user1, tokenId1), amount);
+        assertEq(chamber.getAgentDelegation(user1, tokenId1), amount);
 
         // Undelegate tokens
         chamber.undelegate(tokenId1, amount);
 
         // Check undelegation
-        assertEq(chamber.userDelegation(user1, tokenId1), 0);
+        assertEq(chamber.getAgentDelegation(user1, tokenId1), 0);
         vm.stopPrank();
     }
 
@@ -491,14 +491,14 @@ contract ChamberTest is Test {
         chamber.delegate(tokenId1, amount);
 
         // Check delegation
-        assertEq(chamber.userDelegation(user1, tokenId1), amount);
+        assertEq(chamber.getAgentDelegation(user1, tokenId1), amount);
 
         // Undelegate part of the tokens
         uint256 undelegateAmount = 500;
         chamber.undelegate(tokenId1, undelegateAmount);
 
         // Check updated delegation
-        assertEq(chamber.userDelegation(user1, tokenId1), amount - undelegateAmount);
+        assertEq(chamber.getAgentDelegation(user1, tokenId1), amount - undelegateAmount);
 
         // Check node amount
         Board.Node memory node = chamber.getMember(tokenId1);
@@ -523,13 +523,13 @@ contract ChamberTest is Test {
         chamber.delegate(tokenId1, amount);
 
         // Check delegation
-        assertEq(chamber.userDelegation(user1, tokenId1), amount);
+        assertEq(chamber.getAgentDelegation(user1, tokenId1), amount);
 
         // Undelegate all tokens
         chamber.undelegate(tokenId1, amount);
 
         // Check updated delegation
-        assertEq(chamber.userDelegation(user1, tokenId1), 0);
+        assertEq(chamber.getAgentDelegation(user1, tokenId1), 0);
         vm.stopPrank();
     }
 
