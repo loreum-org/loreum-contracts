@@ -34,7 +34,7 @@ contract Registry is AccessControl, Initializable {
      * @param erc721Token The ERC721 token used for membership
      */
     event ChamberCreated(
-        address chamber,
+        address indexed chamber,
         uint256 seats,
         string name,
         string symbol,

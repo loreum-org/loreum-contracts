@@ -4,23 +4,16 @@ pragma solidity ^0.8.24;
 import {Script} from "forge-std/Script.sol";
 import {Registry} from "src/Registry.sol";
 import {Chamber} from "src/Chamber.sol";
+import {DeployRegistry} from "test/utils/DeployRegistry.sol";
 
-contract DeployRegistry is Script {
+contract RegistryScript is Script {
     function run() external {
         address admin = vm.envAddress("ADMIN");
 
-        // Deploy Chamber implementation
-        Chamber implementation = new Chamber();
+        vm.startBroadcast();
 
-        // Deploy Registry
-        Registry registry = new Registry();
-        registry.initialize(address(implementation), admin);
+        DeployRegistry.deploy(admin);
 
         vm.stopBroadcast();
-
-        // Log deployed addresses
-        console.log("Registry deployed to:", address(registry));
-        console.log("Chamber implementation deployed to:", address(implementation));
-        console.log("Admin set to:", admin);
     }
 } 
