@@ -9,6 +9,7 @@ import {MockERC20} from "test/mock/MockERC20.sol";
 import {MockERC721} from "test/mock/MockERC721.sol";
 import {Board} from "src/Board.sol";
 import {Wallet} from "src/Wallet.sol";
+import {DeployChamber} from "test/utils/DeployChamber.sol";
 
 contract ChamberVaultTest is Test {
     Chamber public chamber;
@@ -21,14 +22,13 @@ contract ChamberVaultTest is Test {
     address public user3 = address(0x3);
 
     function setUp() public {
-        token = new MockERC20();
-        nft = new MockERC721();
-
+        token = new MockERC20("Mock Token", "MCK", 1000000e18);
+        nft = new MockERC721("Mock NFT", "MNFT");
         string memory name = "vERC20";
         string memory symbol = "Vault Token";
 
         seats = 5;
-        chamber = new Chamber(address(token), address(nft), seats, name, symbol);
+        chamber = DeployChamber.deploy(address(token), address(nft), seats, name, symbol);
     }
 
     function test_Vault_Asset() public view {

@@ -8,13 +8,13 @@ contract MockERC721 is ERC721 {
 
     constructor(string memory name, string memory symbol) ERC721(name, symbol) {}
 
-    function mint(address to) external returns (uint256) {
+    function mint(address to) public returns (uint256) {
         uint256 tokenId = _nextTokenId++;
         _mint(to, tokenId);
         return tokenId;
     }
 
-    function mintSpecific(address to, uint256 tokenId) external {
+    function mintWithTokenId(address to, uint256 tokenId) public {
         _mint(to, tokenId);
     }
 }

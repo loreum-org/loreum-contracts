@@ -6,6 +6,7 @@ import {Registry} from "src/Registry.sol";
 import {Chamber} from "src/Chamber.sol";
 import {MockERC20} from "test/mock/MockERC20.sol";
 import {MockERC721} from "test/mock/MockERC721.sol";
+import {DeployRegistry} from "test/utils/DeployRegistry.sol";
 
 contract RegistryTest is Test {
     Registry public registry;
@@ -13,33 +14,25 @@ contract RegistryTest is Test {
     MockERC20 public token;
     MockERC721 public nft;
     address public admin = makeAddr("admin");
-    address public deployer = makeAddr("deployer");
 
     function setUp() public {
         token = new MockERC20("Test Token", "TEST", 1000000e18);
-        nft = new MockERC721();
+        nft = new MockERC721("Mock NFT", "MNFT");
         
         // Deploy implementation
-        implementation = new Chamber(token, nft);
+        implementation = new Chamber();
         
         // Deploy and initialize registry
-        registry = new Registry();
-        registry.initialize(address(implementation), admin);
-
-        // Grant deployer role
+        registry = DeployRegistry.deploy(admin);
         vm.prank(admin);
-        registry.grantRole(registry.DEPLOYER_ROLE(), deployer);
     }
 
-    function test_Initialize() public {
-        assertEq(registry.implementation(), address(implementation));
+    function test_Registry_Initialize() public view {
         assertTrue(registry.hasRole(registry.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(registry.hasRole(registry.ADMIN_ROLE(), admin));
-        assertTrue(registry.hasRole(registry.DEPLOYER_ROLE(), admin));
     }
 
-    function test_CreateChamber() public {
-        vm.startPrank(deployer);
+    function test_Registry_CreateChamber() public {
         address chamber = registry.createChamber(
             address(token),
             address(nft),
@@ -47,7 +40,6 @@ contract RegistryTest is Test {
             "Chamber Token",
             "CHMB"
         );
-        vm.stopPrank();
 
         assertTrue(registry.isChamber(chamber));
         assertEq(registry.getChamberCount(), 1);
@@ -57,29 +49,8 @@ contract RegistryTest is Test {
         assertEq(chambers[0], chamber);
     }
 
-    function test_RevertWhen_NonDeployerCreatesChamber() public {
-        address nonDeployer = makeAddr("nonDeployer");
-        vm.startPrank(nonDeployer);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
-                nonDeployer,
-                registry.DEPLOYER_ROLE()
-            )
-        );
-        registry.createChamber(
-            address(token),
-            address(nft),
-            5,
-            "Chamber Token",
-            "CHMB"
-        );
-        vm.stopPrank();
-    }
-
-    function test_GetChambers_Pagination() public {
+    function test_Registry_GetChambers_Pagination() public {
         // Create 5 chambers
-        vm.startPrank(deployer);
         for (uint256 i = 0; i < 5; i++) {
             registry.createChamber(
                 address(token),
@@ -89,7 +60,6 @@ contract RegistryTest is Test {
                 string.concat("CHMB", vm.toString(i))
             );
         }
-        vm.stopPrank();
 
         // Test pagination
         address[] memory chambers = registry.getChambers(2, 1);

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Chamber} from "src/Chamber.sol";
 import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Initializable} from "lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
 import {Clones} from "lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
@@ -15,26 +14,12 @@ import {Clones} from "lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
 contract Registry is AccessControl, Initializable {
     /// @notice Role for managing the registry configuration
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    
-    /// @notice Role for deploying new chambers
-    bytes32 public constant DEPLOYER_ROLE = keccak256("DEPLOYER_ROLE");
-
-    /// @notice Maximum number of seats allowed on a board
-    uint256 public constant MAX_BOARD_SIZE = 100;
 
     /// @notice The implementation contract to clone
     address public implementation;
 
     /// @notice Array to track all deployed chambers
     address[] private _chambers;
-
-    /**
-     * @notice Sets the registry fee
-     * @param _registryFee The new registry fee in basis points
-     */
-    function setRegistryFee(uint256 _registryFee) external onlyRole(ADMIN_ROLE) {
-        registryFee = _registryFee;
-    }
 
     /// @notice Mapping to check if an address is a deployed chamber
     mapping(address => bool) private _isChamber;
@@ -74,9 +59,6 @@ contract Registry is AccessControl, Initializable {
         
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
-        _grantRole(DEPLOYER_ROLE, admin);
-        
-        _setRoleAdmin(DEPLOYER_ROLE, ADMIN_ROLE);
     }
 
     /**
@@ -94,12 +76,12 @@ contract Registry is AccessControl, Initializable {
         uint256 seats,
         string memory name,
         string memory symbol
-    ) external returns (address chamber) {
+    ) external returns (address payable chamber) {
         if (erc20Token == address(0) || erc721Token == address(0)) revert ZeroAddress();
         if (seats == 0 || seats > 20) revert InvalidSeats();
         
-        chamber = Clones.clone(implementation);
-        Chamber(chamber).initialize(erc20Token, erc721Token, seats, name, symbol);
+        chamber = payable(Clones.clone(implementation));
+        IChamber(chamber).initialize(erc20Token, erc721Token, seats, name, symbol);
         
         _chambers.push(chamber);
         _isChamber[chamber] = true;
@@ -162,4 +144,16 @@ contract Registry is AccessControl, Initializable {
     function isChamber(address chamber) external view returns (bool) {
         return _isChamber[chamber];
     }
-} 
+}
+
+interface IChamber {
+    function initialize(
+        address erc20Token,
+        address erc721Token,
+        uint256 seats,
+        string memory name,
+        string memory symbol
+    ) external;
+}
+
+

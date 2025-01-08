@@ -175,15 +175,6 @@ abstract contract Board {
             node.amount += amount;
             _reposition(tokenId);
         } else {
-            // Check size limit before creating new node
-            if (size >= MAX_NODES) {
-                // If amount is greater than the tail, remove the tail
-                if (amount > nodes[tail].amount) {
-                    _remove(tail);
-                } else {
-                    revert MaxNodesReached();
-                }
-            }
             // Create new node
             _insert(tokenId, amount);
         }
@@ -222,6 +213,8 @@ abstract contract Board {
     }    
 
     function _insert(uint256 tokenId, uint256 amount) internal {
+        if (size >= MAX_NODES) revert MaxNodesReached();
+        
         if (head == 0) {
             _initializeFirstNode(tokenId, amount);
         } else {
@@ -240,44 +233,42 @@ abstract contract Board {
 
     function _insertNodeInOrder(uint256 tokenId, uint256 amount) private {
         // Cache head value
-        uint256 _head = head;
-        uint256 current = _head;
+        uint256 current = head;
         uint256 previous;
         
         // Use unchecked for gas savings since we control node linking
         unchecked {
             // Find insertion point
-            while (current != 0) {
-                // Cache node amount to avoid multiple SLOADs
-                uint256 currentAmount = nodes[current].amount;
-                if (amount > currentAmount) break;
+            while (current != 0 && amount <= nodes[current].amount) {
                 previous = current;
                 current = nodes[current].next;
             }
 
             // Create new node
-            nodes[tokenId].tokenId = tokenId;
-            nodes[tokenId].amount = amount;
-            nodes[tokenId].next = current;
-            nodes[tokenId].prev = previous;
+            Node storage newNode = nodes[tokenId];
+            newNode.tokenId = tokenId;
+            newNode.amount = amount;
+            newNode.next = current;
+            newNode.prev = previous;
 
             // Update links
             if (current == 0) {
                 // Insert at tail
-                nodes[tail].next = tokenId;
+                nodes[previous].next = tokenId;
                 tail = tokenId;
-            } else {
-                // Insert in middle/front
+            } else if (previous == 0) {
+                // Insert at head
                 nodes[current].prev = tokenId;
-                if (previous != 0) {
-                    nodes[previous].next = tokenId;
-                } else {
-                    // New head
-                    head = tokenId;
-                }
+                head = tokenId;
+            } else {
+                // Insert in middle
+                nodes[previous].next = tokenId;
+                nodes[current].prev = tokenId;
             }
         }
     }
+
+    
 
     function _remove(uint256 tokenId) internal returns (bool) {
         Node storage node = nodes[tokenId];

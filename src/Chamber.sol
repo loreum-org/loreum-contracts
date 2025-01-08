@@ -5,16 +5,13 @@ import {Board} from "src/Board.sol";
 import {Wallet} from "src/Wallet.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {IERC721} from "lib/openzeppelin-contracts/contracts/interfaces/IERC721.sol";
-import {ERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import {ERC4626} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC4626.sol";
-import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
-import {Initializable} from "lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
-
+import {ERC4626Upgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import {ERC20Upgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
 /**
  * @title Chamber Contract
  * @notice This contract is a smart vault for managing assets with a board of directors
  */
-contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard, Initializable {
+contract Chamber is ERC4626Upgradeable, Board, Wallet {
 
     /// @notice The implementation version
     string public version = "1.1.3";
@@ -87,7 +84,7 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard, Initializable {
      * @param tokenId The tokenId to which tokens are delegated
      * @param amount The amount of tokens to delegate
      */
-    function delegate(uint256 tokenId, uint256 amount) external nonReentrant {
+    function delegate(uint256 tokenId, uint256 amount) external {
         if (amount == 0 || balanceOf(msg.sender) < amount) {
             revert InsufficientChamberBalance();
         }
@@ -103,7 +100,7 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard, Initializable {
      * @param tokenId The tokenId from which tokens are undelegated
      * @param amount The amount of tokens to undelegate
      */
-    function undelegate(uint256 tokenId, uint256 amount) external nonReentrant {
+    function undelegate(uint256 tokenId, uint256 amount) external {
         // Cache the current delegation amount to minimize storage reads
         uint256 currentDelegation = agentDelegation[msg.sender][tokenId];
         if (currentDelegation < amount || amount == 0) revert InsufficientDelegatedAmount();
@@ -384,7 +381,7 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard, Initializable {
      * @param value The amount of tokens to transfer
      * @return true if the transfer is successful
      */
-    function transfer(address to, uint256 value) public override(ERC20, IERC20) nonReentrant returns (bool) {
+    function transfer(address to, uint256 value) public override(ERC20Upgradeable, IERC20) returns (bool) {
         if (to == address(0)) revert TransferToZeroAddress();
 
         address owner = _msgSender();
@@ -407,8 +404,7 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard, Initializable {
      */
     function transferFrom(address from, address to, uint256 value)
         public
-        override(ERC20, IERC20)
-        nonReentrant
+        override(ERC20Upgradeable, IERC20)
         returns (bool)
     {
         if (to == address(0)) revert TransferToZeroAddress();

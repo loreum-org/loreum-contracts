@@ -3,8 +3,9 @@ pragma solidity 0.8.24;
 
 import {Script} from "lib/forge-std/src/Script.sol";
 import {Chamber} from "src/Chamber.sol";
+import {DeployChamber} from "test/utils/DeployChamber.sol";
 
-contract DeployChamber is Script {
+contract ChamberScript is Script {
     address nft;
     address asset;
 
@@ -26,7 +27,7 @@ contract DeployChamber is Script {
             nft = 0x03c4738Ee98aE44591e1A4A4F3CaB6641d95DD9a;
         }
 
-        new Chamber(asset, nft, 5, "Chamber LORE", "cLORE");
+        DeployChamber.deploy(asset, nft, 5, "Chamber LORE", "cLORE");
 
         vm.stopBroadcast();
     }
