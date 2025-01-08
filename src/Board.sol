@@ -23,6 +23,9 @@ abstract contract Board {
         uint256 prev;
     }
 
+    /// @notice Maximum number of nodes allowed in the linked list
+    uint256 internal constant MAX_NODES = 100;
+
     /// @notice Number of board seats
     uint256 private seats;
 
@@ -121,6 +124,9 @@ abstract contract Board {
     /// @param supporter The address of the supporter
     error SupporterNotOnLeaderboard(address supporter);
 
+    /// @notice Thrown when the linked list has reached its maximum size
+    error MaxNodesReached();
+
     /// MODIFIERS ///
 
     /**
@@ -134,7 +140,7 @@ abstract contract Board {
         _;
         locked = false;
     }
-    
+
     /**
      * @notice Modifier that prevents reentrancy and contract calls
      * @dev Checks if caller is an EOA or if circuit breaker is not active
@@ -169,6 +175,15 @@ abstract contract Board {
             node.amount += amount;
             _reposition(tokenId);
         } else {
+            // Check size limit before creating new node
+            if (size >= MAX_NODES) {
+                // If amount is greater than the tail, remove the tail
+                if (amount > nodes[tail].amount) {
+                    _remove(tail);
+                } else {
+                    revert MaxNodesReached();
+                }
+            }
             // Create new node
             _insert(tokenId, amount);
         }

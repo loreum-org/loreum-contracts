@@ -8,12 +8,14 @@ import {IERC721} from "lib/openzeppelin-contracts/contracts/interfaces/IERC721.s
 import {ERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC4626.sol";
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
+import {Initializable} from "lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
 
 /**
  * @title Chamber Contract
- * @notice This contract manages a multisig wallet with governance and delegation features using ERC20 and ERC721 tokens.
+ * @notice This contract is a smart vault for managing assets with a board of directors
  */
-contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
+contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard, Initializable {
+
     /// @notice The implementation version
     string public version = "1.1.3";
 
@@ -47,20 +49,35 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
     error ArrayIndexOutOfBounds();
     error CannotTransfer();
     error NotOnLeaderboard(address);
+    error ZeroSeats();
+    error TooManySeats();
+
+    constructor() {
+        _disableInitializers();
+    }
 
     /**
      * @notice Initializes the Chamber contract with the given ERC20 and ERC721 tokens and sets the number of seats
      * @param erc20Token The address of the ERC20 token
      * @param erc721Token The address of the ERC721 token
      * @param seats The initial number of seats
+     * @param _name The name of the chamber's ERC20 token
+     * @param _symbol The symbol of the chamber's ERC20 token
      */
-    constructor(address erc20Token, address erc721Token, uint256 seats, string memory _name, string memory _symbol)
-        ERC4626(IERC20(erc20Token))
-        ERC20(_name, _symbol)
-    {
+    function initialize(
+        address erc20Token,
+        address erc721Token,
+        uint256 seats,
+        string memory _name,
+        string memory _symbol
+    ) external initializer {
         if (erc20Token == address(0) || erc721Token == address(0)) {
             revert ZeroAddress();
         }
+        
+        __ERC4626_init(IERC20(erc20Token));
+        __ERC20_init(_name, _symbol);
+        
         nft = IERC721(erc721Token);
         _setSeats(0, seats);
     }
@@ -172,29 +189,26 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
     function getDelegations(address agent) external view returns (uint256[] memory tokenIds, uint256[] memory amounts) {
         uint256 count = 0;
         uint256 tokenId = head;
+        uint256[] memory tempTokenIds = new uint256[](size);
+        uint256[] memory tempAmounts = new uint256[](size);
 
-        // First pass: count the number of delegations
+        // Single pass: count delegations and store tokenIds and amounts
         while (tokenId != 0) {
-            if (agentDelegation[agent][tokenId] > 0) {
+            uint256 amount = agentDelegation[agent][tokenId];
+            if (amount > 0) {
+                tempTokenIds[count] = tokenId;
+                tempAmounts[count] = amount;
                 count++;
             }
             tokenId = nodes[tokenId].next;
         }
 
-        // Allocate arrays with the correct size
+        // Allocate arrays with the correct size and copy data
         tokenIds = new uint256[](count);
         amounts = new uint256[](count);
-
-        // Second pass: populate the arrays
-        count = 0;
-        tokenId = head;
-        while (tokenId != 0) {
-            if (agentDelegation[agent][tokenId] > 0) {
-                tokenIds[count] = tokenId;
-                amounts[count] = agentDelegation[agent][tokenId];
-                count++;
-            }
-            tokenId = nodes[tokenId].next;
+        for (uint256 i = 0; i < count; i++) {
+            tokenIds[i] = tempTokenIds[i];
+            amounts[i] = tempAmounts[i];
         }
     }
 
@@ -234,6 +248,11 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
      *     function with a different number of seats will cancel the existing proposal.
      */
     function updateSeats(uint256 tokenId, uint256 numOfSeats) public isDirector(tokenId) {
+        if (numOfSeats == 0) revert ZeroSeats();
+
+        uint256 MAX_SEATS = 20;
+
+        if (numOfSeats > MAX_SEATS) revert TooManySeats();
         _setSeats(tokenId, numOfSeats);
     }
 
@@ -345,10 +364,6 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
         uint256 current = head;
         uint256 remaining = _getSeats();
 
-        // Prevent infinite loop if linked list is corrupted
-        uint256 maxIterations = 100;
-        uint256 iterations;
-
         while (current != 0 && remaining > 0) {
             if (current == tokenId) {
                 _;
@@ -356,10 +371,6 @@ contract Chamber is ERC4626, Board, Wallet, ReentrancyGuard {
             }
             current = nodes[current].next;
             remaining--;
-            
-            // Check for infinite loop
-            iterations++;
-            if (iterations > maxIterations) revert("Linked list error");
         }
         revert NotDirector();
     }

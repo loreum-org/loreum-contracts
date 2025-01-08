@@ -1,78 +1,70 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test} from "lib/forge-std/src/Test.sol";
+import {Test} from "forge-std/Test.sol";
+import {Board} from "src/Board.sol";
 import {MockBoard} from "test/mock/MockBoard.sol";
 
 contract BoardTest is Test {
     MockBoard board;
+    address user = makeAddr("user");
+    uint256 constant MAX_NODES = 50;
 
     function setUp() public {
         board = new MockBoard();
     }
 
-    function test_Board_Insert() public {
-        uint256 tokenId = 1;
-        uint256 amount = 100;
-
-        board.insert(tokenId, amount);
-
-        MockBoard.Node memory node = board.getNode(tokenId);
-        assertEq(node.tokenId, tokenId);
-        assertEq(node.amount, amount);
-    }
-
-    function test_Board_Remove() public {
-        uint256 tokenId = 1;
-        uint256 amount = 100;
-
-        board.insert(tokenId, amount);
-        board.remove(tokenId);
-
-        MockBoard.Node memory node = board.getNode(tokenId);
-        assertEq(node.tokenId, 0);
-        assertEq(node.amount, 0);
-    }
-
-    function test_Board_Reposition() public {
-        uint256 tokenId = 1;
-        uint256 amount = 100;
-
-        board.insert(tokenId, amount);
-        board.reposition(tokenId);
-
-        MockBoard.Node memory node = board.getNode(tokenId);
-        assertEq(node.tokenId, tokenId);
-        assertEq(node.amount, amount);
-    }
-
-    function test_Board_GetNode() public {
-        uint256 tokenId = 1;
-        uint256 amount = 100;
-
-        board.insert(tokenId, amount);
-
-        MockBoard.Node memory node = board.getNode(tokenId);
-        assertEq(node.tokenId, tokenId);
-        assertEq(node.amount, amount);
-    }
-
-    function test_Board_GetTop() public {
-        uint256 count = 3;
-        uint256[] memory tokenIds = new uint256[](count);
-        uint256[] memory amounts = new uint256[](count);
-
-        for (uint256 i = 0; i < count; i++) {
-            tokenIds[i] = i + 1;
-            amounts[i] = (i + 1) * 100;
-            board.insert(tokenIds[i], amounts[i]);
+    function test_MaxNodes() public {
+        // Create MAX_NODES nodes
+        for (uint256 i = 1; i <= MAX_NODES; i++) {
+            board.exposed_delegate(i, 100 * (MAX_NODES - i + 1));
         }
 
-        (uint256[] memory topTokenIds, uint256[] memory topAmounts) = board.getTop(count);
+        // Verify size
+        assertEq(board.getSize(), MAX_NODES);
 
-        for (uint256 i = 0; i < count; i++) {
-            assertEq(topTokenIds[i], tokenIds[(count - 1) - i]);
-            assertEq(topAmounts[i], amounts[(count - 1) - i]);
+        // Try to add one more node
+        vm.expectRevert(Board.MaxNodesReached.selector);
+        board.exposed_delegate(MAX_NODES + 1, 100);
+
+        // Verify we can still update existing nodes
+        board.exposed_delegate(1, 100);
+        assertEq(board.getSize(), MAX_NODES);
+
+        // Remove a node and verify we can add a new one
+        board.exposed_undelegate(1, board.getNode(1).amount);
+        assertEq(board.getSize(), MAX_NODES - 1);
+        board.exposed_delegate(MAX_NODES + 1, 100);
+        assertEq(board.getSize(), MAX_NODES);
+    }
+
+    function test_MaxNodes_Ordering() public {
+        // Create MAX_NODES nodes in reverse order
+        for (uint256 i = MAX_NODES; i > 0; i--) {
+            board.exposed_delegate(i, i * 100);
         }
+
+        // Verify ordering
+        uint256 current = board.getHead();
+        uint256 expected = MAX_NODES;
+        while (current != 0) {
+            assertEq(current, expected);
+            current = board.getNode(current).next;
+            expected--;
+        }
+    }
+
+    function test_MaxNodes_Reposition() public {
+        // Fill up to MAX_NODES
+        for (uint256 i = 1; i <= MAX_NODES; i++) {
+            board.exposed_delegate(i, i * 100);
+        }
+
+        // Update middle node to highest amount
+        uint256 middleNode = MAX_NODES / 2;
+        board.exposed_delegate(middleNode, MAX_NODES * 200);
+
+        // Verify it's now at the head
+        assertEq(board.getHead(), middleNode);
     }
 }
